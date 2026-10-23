@@ -70,11 +70,15 @@ Uma imagem é o pacote/modelo usado para criar contêineres; um contêiner é um
 - `docker compose up -d`, após a remoção: contêiner e rede recriados com sucesso.
 - Após a recriação: estado `running`, healthcheck `healthy` e resposta HTTP 200.
 
-### Teste de reinicialização automática — pendente
+### Teste de reinicialização automática — aprovado
 
-A política `always` está configurada no Compose e foi confirmada por `docker inspect`. Entretanto, os testes realizados até agora não comprovaram a recuperação automática após o encerramento do processo principal.
+O teste foi realizado no próprio contêiner `juice-shop`, sem removê-lo ou recriá-lo. O processo principal recebeu `SIGTERM` por meio de um comando Node executado no contêiner.
 
-Os testes com `docker kill` terminaram com o contêiner em estado `exited` e `RestartCount=0`. O teste auxiliar com Alpine também não comprovou uma reinicialização. Portanto, este requisito permanece pendente de validação; não é considerado aprovado.
+Após o teste, `docker inspect` confirmou `Status=running`, `RestartPolicy=always` e `RestartCount=1`. A aplicação respondeu HTTP 200 durante a validação e, após aguardar a inicialização, o healthcheck passou para `healthy`.
+
+Resultado: reinicialização automática comprovada no Juice Shop.
+
+Evidência: `E2-08-reinicializacao-automatica-comprovada.png`.
 
 ### Avisos opcionais da aplicação
 
@@ -95,8 +99,9 @@ Registrar e anexar as capturas reais produzidas durante a etapa, incluindo:
 - `E2-05-acesso-local-restaurado.png`
 - `E2-06-compose-down.png`
 - `E2-07-compose-up-recriacao.png`
+- `E2-08-reinicializacao-automatica-comprovada.png`
 
-A evidência do teste de reinicialização automática só deve ser adicionada depois de um teste válido e bem-sucedido.
+A evidência do teste de reinicialização automática está registrada em E2-08-reinicializacao-automatica-comprovada.png.
 
 ## Segurança
 
