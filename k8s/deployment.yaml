@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: juice-shop
+  namespace: juiceshop
+  labels:
+    app: juice-shop
+spec:
+  # O Kubernetes deve manter duas réplicas da aplicação.
+  replicas: 2
+
+  # O Deployment controla os Pods que possuem esta label.
+  selector:
+    matchLabels:
+      app: juice-shop
+
+  # Estratégia padrão de atualização gradual.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: juice-shop
+    spec:
+      containers:
+        - name: juice-shop
+          image: bkimminich/juice-shop:v20.3.0
+
+          # Usa a imagem já carregada no node, se disponível.
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+
+          # Readiness: só recebe tráfego quando responde corretamente.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+
+          # Liveness: reinicia o container se ele permanecer sem responder.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+
+          # Recursos reservados para agendamento e limites máximos.
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "384Mi"
+            limits:
+              cpu: "500m"
+              memory: "768Mi"
