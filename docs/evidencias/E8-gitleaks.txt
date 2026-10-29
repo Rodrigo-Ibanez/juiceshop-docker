@@ -1,0 +1,11 @@
+GITLEAKS — VARREDURA DO HISTÓRICO GIT
+Data: 2026-10-29 15:23:23
+Comando: gitleaks git --redact --log-opts="--all"
+
+Resultado:
+10 commits analisados.
+Aproximadamente 47,05 KB examinados.
+Nenhum segredo detectado.
+
+Observação:
+A varredura cobre o histórico alcançado pelas referências Git locais disponíveis no momento da execução. Não garante ausência absoluta de dados sensíveis em todos os arquivos, imagens ou referências remotas.
