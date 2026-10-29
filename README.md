@@ -231,3 +231,35 @@ A exposição externa foi desativada após a demonstração. A validação local
 - **Segurança:** o acesso externo foi desativado após a demonstração. A validação local não substitui uma verificação independente do roteador.
 - **Reprodução por terceiros:** ainda não confirmada. Não afirmar que outra pessoa reproduziu o procedimento até que isso ocorra.
 - **Revisão do histórico Git e das imagens:** conferir antes da publicação final para evitar exposição acidental de dados sensíveis.
+
+## 9. Reprodução em clone limpo
+
+A reprodução foi validada em um clone separado do repositório.
+
+- Duas réplicas do Juice Shop ficaram prontas no Kubernetes `kind`.
+- O Nginx foi conectado à rede Docker `kind`.
+- O upstream usa o nome do nó, evitando um IP fixo:
+
+```nginx
+proxy_pass http://juiceshop-local-control-plane:30080;
+```
+
+- `nginx -t` passou.
+- HTTP retornou `301` e HTTPS retornou `200`.
+- As portas publicadas foram restritas a `127.0.0.1:80` e `127.0.0.1:443`.
+- Os problemas de rede Docker e de incompatibilidade entre certificado e chave foram corrigidos.
+
+Consulte `docs/evidencias/E9-reproducao-clone.md` para o registro do teste.
+
+## 10. Segurança e encerramento
+
+O Juice Shop é intencionalmente vulnerável e deve permanecer em laboratório autorizado. O acesso externo foi desativado após a demonstração. A chave privada local não deve ser versionada, e o NodePort `30080` não deve ser publicado diretamente no Windows.
+
+O encerramento do ambiente original está registrado nos arquivos E7. A varredura Gitleaks está registrada em E8. A reprodução E9 foi realizada em um clone de teste e não significa que o ambiente original tenha sido alterado.
+
+## 11. Pendências e melhorias
+
+- Confirmar a evidência da Etapa 1, caso seja exigida.
+- Automatizar a validação HTTP/HTTPS e dos cabeçalhos.
+- Automatizar a verificação do upstream após recriar o cluster.
+- Revisar os artefatos antes da publicação final.
