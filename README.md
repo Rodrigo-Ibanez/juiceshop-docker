@@ -88,6 +88,72 @@ Os arquivos Compose documentam a arquitetura inicial. A arquitetura final é Kub
 A pasta `backup-etapa6/` contém arquivos de referência. Inspecione seu conteúdo antes de decidir se deve ser incluída na entrega.
 
 
+## Implantação a partir de um clone limpo
+
+Este procedimento reproduz o ambiente em um clone novo do repositório. Execute os comandos no PowerShell, na raiz do clone, com Docker Desktop em execução e `git`, `kind` e `kubectl` instalados.
+
+**Importante:** o procedimento cria um cluster chamado `juiceshop-local` e um contêiner chamado `juice-shop-nginx-edge`. Se esses recursos já existirem no Docker local, não os remova sem confirmar que podem ser recriados.
+
+### 1. Criar o cluster
+
+```powershell
+kind create cluster --config .\kind-config.yaml
+kubectl wait --for=condition=Ready nodes --all --timeout=180s
+```
+
+### 2. Implantar o Juice Shop
+
+```powershell
+kubectl apply -f .\k8s\namespace.yaml
+kubectl apply -f .\k8s\deployment.yaml
+kubectl apply -f .\k8s\service.yaml
+kubectl -n juiceshop rollout status deployment/juice-shop --timeout=300s
+kubectl -n juiceshop get deployment,service,pods -o wide
+```
+
+Confirme que as duas réplicas estão prontas.
+
+### 3. Gerar o certificado TLS local
+
+Gere um certificado autoassinado para o laboratório. A chave privada é local e não deve ser versionada.
+
+```powershell
+docker run --rm -v "${PWD}\nginx-edge\certs:/certs" alpine/openssl req -x509 -nodes -days 30 -newkey rsa:2048 -keyout /certs/juiceshop.local.key -out /certs/juiceshop.local.crt -subj "/CN=juiceshop.local" -addext "subjectAltName=DNS:juiceshop.local,IP:127.0.0.1"
+```
+
+### 4. Iniciar o Nginx Edge
+
+Confirme que `nginx-edge/nginx.conf` contém o upstream abaixo:
+
+```nginx
+proxy_pass http://juiceshop-local-control-plane:30080;
+```
+
+Crie o contêiner Nginx Edge na rede Docker `kind`, publicando as portas somente no loopback do Windows. Execute este comando apenas se o contêiner ainda não existir:
+
+```powershell
+docker run -d --name juice-shop-nginx-edge --restart unless-stopped --network kind -p 127.0.0.1:80:80 -p 127.0.0.1:443:443 -v "${PWD}\nginx-edge\nginx.conf:/etc/nginx/nginx.conf:ro" -v "${PWD}\nginx-edge\certs:/etc/nginx/certs:ro" nginx:1.28-alpine
+```
+
+### 5. Validar o ambiente
+
+```powershell
+docker exec juice-shop-nginx-edge nginx -t
+docker ps --filter "name=juice-shop-nginx-edge"
+kubectl -n juiceshop get deployment,service,pods -o wide
+curl.exe -sS -o NUL -w "HTTP=%{http_code}`n" -H "Host: juiceshop.local" http://127.0.0.1/
+curl.exe -k -sS -o NUL -w "HTTPS=%{http_code}`n" --resolve juiceshop.local:443:127.0.0.1 https://juiceshop.local/
+```
+
+Resultado esperado: configuração Nginx válida, duas réplicas prontas, HTTP `301` e HTTPS `200`.
+
+### Segurança
+
+- As portas publicadas ficam limitadas a `127.0.0.1`.
+- O certificado é autoassinado e destinado ao laboratório.
+- Não exponha o Juice Shop vulnerável à internet.
+- A chave privada não deve ser adicionada ao Git.
+
 
 ## Implantação e validação
 
