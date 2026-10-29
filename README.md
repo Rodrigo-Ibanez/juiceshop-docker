@@ -216,7 +216,11 @@ A desmontagem acima remove o contêiner Edge e o cluster local. Ela não substit
 
 ## Estado da entrega
 
-- Etapas 1 a 6: desenvolvidas e documentadas.
-- Etapa 7: README revisado, vídeo gravado e validações locais realizadas; revisão final da entrega pendente.
-- Publicação do repositório: pendente de validação e autorização.
-- Gravação da demonstração: concluída; arquivo salvo em docs/demonstracao/demonstracao-juice-shop.mp4.
+- **Etapas 1 a 6:** desenvolvidas e documentadas.
+- **Etapa 7:** README revisado, vídeo de demonstração gravado e validações locais realizadas; revisão final da entrega em andamento.
+- **Publicação do repositório:** concluída no GitHub, na branch `master`. Último commit: `4813666` — `Finaliza documentação e evidências do projeto Juice Shop`.
+- **Demonstração:** vídeo disponível em `docs/demonstracao/demonstracao-juice-shop.mp4`, enviado ao GitHub via Git LFS.
+- **Evidências:** capturas das Etapas 2 a 6 disponíveis em `docs/evidencias/`; a evidência específica da Etapa 1 ainda precisa ser localizada ou produzida, caso seja exigida.
+- **Segurança:** o acesso externo foi desativado após a demonstração. A revisão final dos arquivos e do histórico Git ainda precisa ser concluída.
+- **Teardown:** execução e evidências pendentes de confirmação.
+- **Reprodução por terceiros:** ainda não confirmada; não afirmar que outra pessoa testou o procedimento até que isso ocorra.
