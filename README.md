@@ -2,258 +2,221 @@
 
 ## Objetivo
 
-Preparar um ambiente local para executar o OWASP Juice Shop com Docker, Docker Compose, Kubernetes e Nginx, mantendo o serviço restrito à própria máquina durante esta etapa.
+Documentar a implantação local do OWASP Juice Shop usando Docker, Docker Compose, Kubernetes com kind e Nginx como proxy reverso HTTPS.
 
-## Etapa 1 — Ambiente Docker
+> O OWASP Juice Shop é intencionalmente vulnerável e destinado a treinamento. Use somente dados fictícios e não exponha o laboratório publicamente sem autorização.
 
-### Ambiente utilizado
+## Estado do projeto
 
-- Sistema operacional do host: Windows 11 Pro
-- Docker Desktop: 4.84.0
-- Docker Engine: 29.6.2
-- Git: 2.55.0.windows.3
-- Backend: WSL 2
-- Arquitetura: Linux x86_64
-- CPUs disponibilizadas ao Docker: 8
-- Memória disponibilizada ao Docker: aproximadamente 7,545 GiB
+As Etapas 1 a 6 foram desenvolvidas e documentadas. A arquitetura final utiliza um cluster Kubernetes local criado com kind, duas réplicas do Juice Shop e um Nginx Edge que publica HTTP e HTTPS somente em 127.0.0.1.
 
-### Imagens, contêineres e máquinas virtuais
+A documentação técnica detalhada está em [ARQUITETURA-ETAPA6.md](ARQUITETURA-ETAPA6.md).
 
-Uma imagem é o modelo que contém os arquivos e as dependências de uma aplicação; um contêiner é uma instância executável dessa imagem.
+## Ambiente validado
 
-Uma máquina virtual executa um sistema operacional convidado com seu próprio kernel. Contêineres Linux compartilham o kernel Linux fornecido pelo ambiente Docker.
+| Componente | Versão ou configuração observada |
+|---|---|
+| Sistema operacional | Windows 11 Pro, build 26200 |
+| Docker Engine | 29.6.2 |
+| Git | 2.55.0.windows.3 |
+| kind | v0.33.0 |
+| kubectl | v1.36.1 |
+| Kubernetes do nó kind | v1.37.0 |
+| Sistema operacional do nó | Debian GNU/Linux 13 |
+| Réplicas disponíveis | 2/2 |
+| Imagem do Juice Shop | `bkimminich/juice-shop:v20.3.0` |
+| Nginx Edge | `nginx:1.28-alpine` |
 
-Neste projeto, não foi criada uma VM manual. O Docker Desktop utiliza WSL 2 como backend para executar contêineres Linux no Windows.
+As versões representam o ambiente observado em 29/10/2026 e podem mudar em instalações futuras.
 
-### Testes realizados
+## Arquitetura final
 
-- `docker version`: cliente e servidor conectados.
-- `docker run hello-world`: execução confirmada.
-- `docker info`: ambiente Docker verificado.
-- `docker logs teste-ciclo`: consulta dos logs.
-- `docker stop teste-ciclo` e `docker rm teste-ciclo`: ciclo de parada e remoção confirmado.
-
-### Ocorrência e resolução
-
-O Docker Desktop inicialmente não iniciou porque o recurso opcional Windows Subsystem for Linux estava desabilitado. O recurso WSL foi habilitado e o cliente passou a se comunicar com o servidor Docker.
-
-## Etapa 2 — Juice Shop com Docker Compose
-
-### Imagem e configuração
-
-- Imagem: `bkimminich/juice-shop:v20.3.0`
-- Contêiner: `juice-shop`
-- Porta local: `127.0.0.1:3000`
-- Política de reinicialização configurada: `always`
-- Healthcheck: requisição HTTP local, com intervalo de 30 segundos, timeout de 5 segundos, 3 tentativas e período inicial de 60 segundos.
-
-Foi escolhida uma tag de versão fixa para tornar a implantação mais reproduzível, em vez de usar `latest`.
-
-A porta foi vinculada a `127.0.0.1` para restringir o acesso direto à própria máquina. Não foi configurado acesso externo.
-
-### Imagem versus contêiner e EXPOSE versus publicação de portas
-
-Uma imagem é o pacote/modelo usado para criar contêineres; um contêiner é uma instância executável dessa imagem.
-
-`EXPOSE` documenta a porta que a aplicação utiliza, mas não publica essa porta no host por si só.
-
-`-p` no Docker ou `ports` no Compose cria um mapeamento entre uma porta do host e uma porta do contêiner. Neste projeto, `127.0.0.1:3000:3000` restringe o acesso publicado à própria máquina.
-
-### Testes e resultados comprovados
-
-- `docker compose config`: configuração validada.
-- `docker compose up -d`: contêiner iniciado.
-- `docker ps`: contêiner em execução, com estado `healthy`.
-- `docker inspect`: política `always` e estado do healthcheck conferidos.
-- `Invoke-WebRequest http://localhost:3000 -UseBasicParsing`: resposta HTTP 200.
-- `docker compose down`: contêiner e rede do Compose removidos.
-- `docker compose up -d`, após a remoção: contêiner e rede recriados com sucesso.
-- Após a recriação: estado `running`, healthcheck `healthy` e resposta HTTP 200.
-
-### Teste de reinicialização automática — aprovado
-
-O teste foi realizado no próprio contêiner `juice-shop`, sem removê-lo ou recriá-lo. O processo principal recebeu `SIGTERM` por meio de um comando Node executado no contêiner.
-
-Após o teste, `docker inspect` confirmou `Status=running`, `RestartPolicy=always` e `RestartCount=1`. A aplicação respondeu HTTP 200 durante a validação e, após aguardar a inicialização, o healthcheck passou para `healthy`.
-
-Resultado: reinicialização automática comprovada no Juice Shop.
-
-Evidência: `E2-08-reinicializacao-automatica-comprovada.png`.
-
-### Avisos opcionais da aplicação
-
-Os logs registraram avisos sobre a ausência de `ALCHEMY_API_KEY` e sobre um endpoint local de Ollama indisponível. Esses avisos afetam desafios opcionais de Web3 e IA, mas não impediram o início da aplicação nem a resposta HTTP 200.
-
-### Decisão técnica
-
-Escolhi `bkimminich/juice-shop:v20.3.0` porque a tag fixa favorece a reprodução da implantação. A porta foi vinculada a `127.0.0.1` para manter o acesso local e reduzir a exposição desnecessária.
-
-### Evidências
-
-Registrar e anexar as capturas reais produzidas durante a etapa, incluindo:
-
-- `E2-01-docker-version.png`
-- `E2-02-docker-info.png`
-- `E2-03-compose-validado.png`
-- `E2-04-juice-shop-local-e-docker-ps.png`
-- `E2-05-acesso-local-restaurado.png`
-- `E2-06-compose-down.png`
-- `E2-07-compose-up-recriacao.png`
-- `E2-08-reinicializacao-automatica-comprovada.png`
-
-A evidência do teste de reinicialização automática está registrada em E2-08-reinicializacao-automatica-comprovada.png.
-
-## Segurança
-
-O OWASP Juice Shop é intencionalmente vulnerável e destinado a treinamento. Utilizar somente dados fictícios, manter o ambiente local e não expor portas à internet. Não registrar senhas, tokens ou outros segredos no repositório.
-
-## Etapa 3 — Nginx como proxy reverso
-
-### Objetivo
-
-Adicionar o Nginx como ponto de entrada HTTP do Juice Shop, mantendo os dois serviços em uma rede Docker compartilhada e sem publicar diretamente a porta 3000 no Windows.
-
-### Arquitetura implementada
-
-- Aplicação: `bkimminich/juice-shop:v20.3.0`
-- Contêiner da aplicação: `juice-shop`
-- Proxy reverso: `nginx:1.28-alpine`
-- Contêiner do proxy: `juice-shop-nginx`
-- Rede Docker: `juice-internal`
-- Porta publicada no host: `127.0.0.1:8080`
-- Porta interna do Juice Shop: `3000`
-- Arquivo de configuração: `nginx.conf`
-- Montagem do arquivo: somente leitura (`ro`)
-- Política de reinicialização dos serviços: `always`
-
-O navegador acessa `http://localhost:8080`. O Nginx encaminha a requisição para `http://juice-shop:3000`, usando a resolução de nomes da rede Docker Compose.
-
-A porta 3000 não é publicada no host. Os testes realizados confirmaram HTTP 200 pela porta 8080 e indisponibilidade do acesso direto por `localhost:3000`.
-
-### Configuração do Nginx
-
-O arquivo `nginx.conf` utilizado:
-
-```nginx
-worker_processes auto;
-
-events {
-    worker_connections 1024;
-}
-
-http {
-    # Oculta a versao do Nginx nas respostas.
-    server_tokens off;
-
-    # Registra as requisicoes recebidas pelo proxy.
-    access_log /var/log/nginx/access.log;
-    error_log  /var/log/nginx/error.log warn;
-
-    server {
-        listen 8080;
-        server_name _;
-
-        location / {
-            # Nome do servico Compose na rede Docker interna.
-            proxy_pass http://juice-shop:3000;
-
-            # Preserva informacoes da requisicao original.
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-
-            proxy_http_version 1.1;
-            proxy_set_header Connection "";
-        }
-    }
-}
+```text
+Navegador no Windows
+        |
+        | 127.0.0.1:80 / 443
+        v
+Nginx Edge (Docker)
+        |
+        | NodePort 30080 na rede Docker kind
+        v
+Nó do cluster kind
+        |
+        v
+Service Kubernetes: juice-shop
+        |
+        v
+Deployment: 2 réplicas
+        |
+        v
+Pods do OWASP Juice Shop: 3000
 ```
 
-O arquivo é montado em `/etc/nginx/nginx.conf` com a opção `ro`, impedindo que o contêiner altere diretamente o arquivo de configuração do host.
+O nome local utilizado é `juiceshop.local`, associado a `127.0.0.1` no arquivo hosts do Windows. O certificado TLS é autoassinado e não será confiável automaticamente em todos os clientes.
 
-### Conceitos técnicos
+## Responsabilidades das tecnologias
 
-#### Proxy reverso
+- **Docker:** executa contêineres.
+- **Docker Compose:** descreve a implantação inicial das Etapas 2 e 3.
+- **kind:** cria um cluster Kubernetes local dentro de contêineres.
+- **Kubernetes:** gerencia Deployment, Pods, réplicas e Service.
+- **Nginx Edge:** centraliza o acesso HTTP/HTTPS local, aplica redirecionamento, cabeçalhos, limite de requisições e logs.
 
-O proxy reverso recebe as requisições dos clientes e as encaminha para a aplicação de destino. Neste projeto, o Nginx centraliza a entrada HTTP e evita a publicação direta da porta 3000 no host.
+Os arquivos Compose documentam a arquitetura inicial. A arquitetura final é Kubernetes com Nginx Edge.
 
-#### `proxy_pass`
+## Estrutura do projeto
 
-Define o destino das requisições encaminhadas. O nome `juice-shop` corresponde ao serviço definido no Compose e é resolvido pela rede Docker compartilhada.
+```text
+.
+|-- README.md
+|-- ARQUITETURA-ETAPA6.md
+|-- docker-compose.yml
+|-- nginx.conf
+|-- kind-config.yaml
+|-- k8s/
+|   |-- namespace.yaml
+|   |-- deployment.yaml
+|   `-- service.yaml
+|-- nginx-edge/
+|   |-- nginx.conf
+|   `-- certs/
+|       |-- juiceshop.local.crt
+|       `-- juiceshop.local.key (privado; não versionar)
+`-- docs/evidencias/
+```
 
-#### Cabeçalhos encaminhados
+A pasta `backup-etapa6/` contém arquivos de referência. Inspecione seu conteúdo antes de decidir se deve ser incluída na entrega.
 
-- `Host`: encaminha o nome do host solicitado.
-- `X-Real-IP`: registra o endereço remoto observado pelo Nginx.
-- `X-Forwarded-For`: mantém a cadeia de endereços IP encaminhados.
-- `X-Forwarded-Proto`: informa o protocolo usado entre cliente e proxy.
-- `Connection`: é enviado vazio para evitar o encaminhamento direto desse cabeçalho de conexão.
 
-Neste ambiente local, o acesso ao proxy utiliza HTTP. Portanto, `X-Forwarded-Proto` informa `http`; isso não significa que exista criptografia TLS.
 
-#### `server_tokens off`
+## Implantação e validação
 
-Oculta a versão do Nginx no cabeçalho de resposta `Server`. O teste apresentou `Server: nginx`, sem o número da versão.
-
-Essa configuração reduz a divulgação de detalhes sobre o software, mas não substitui atualizações, controle de acesso ou outras medidas de segurança.
-
-#### `nginx -t`
-
-Valida a sintaxe e a consistência da configuração do Nginx. A validação foi executada com:
+### 1. Verificar ferramentas
 
 ```powershell
-docker compose run --rm --no-deps nginx nginx -t
+docker --version
+docker info
+kind version
+kubectl version --client
+git --version
 ```
 
-Resultado observado: `syntax is ok` e `test is successful`.
+### 2. Verificar o cluster Kubernetes
 
-#### Logs
+```powershell
+kubectl get nodes -o wide
+kubectl get namespaces
+kubectl -n juiceshop get deployment,service,pods -o wide
+```
 
-O Nginx registra requisições em `/var/log/nginx/access.log` e ocorrências relevantes em `/var/log/nginx/error.log`.
+O resultado validado do Deployment foi de duas réplicas disponíveis. Os Pods devem estar em estado `Running` e prontos antes de testar a aplicação.
 
-A consulta dos logs do contêiner confirmou requisições HTTP com status 200, incluindo a requisição de teste `/?e3-log-test=1`.
+### 3. Verificar o Nginx Edge
 
-### Testes realizados e resultados
+```powershell
+docker ps --filter "name=juice-shop-nginx-edge"
+docker exec juice-shop-nginx-edge nginx -t
+```
 
-- `docker compose config --quiet`: configuração do Compose validada.
-- `docker compose run --rm --no-deps nginx nginx -t`: configuração do Nginx validada.
-- `docker compose ps`: Juice Shop em estado `healthy` e Nginx em execução.
-- `Invoke-WebRequest http://localhost:8080 -UseBasicParsing`: HTTP 200.
-- `Invoke-WebRequest http://localhost:3000 -UseBasicParsing -TimeoutSec 5`: acesso direto indisponível no host.
-- `Invoke-WebRequest http://localhost:8080/?e3-log-test=1 -UseBasicParsing`: requisição de teste registrada no log de acesso.
-- Cabeçalho HTTP: `Server: nginx`, sem a versão.
-- `docker compose logs --tail 10 nginx`: registros de requisições HTTP com status 200.
+### 4. Testar HTTP e HTTPS
 
-### O que a solução resolve
+O HTTP deve redirecionar para HTTPS. O teste abaixo usa `-k` porque o certificado é autoassinado; isso serve para validar o laboratório, não para estabelecer confiança no certificado.
 
-- Centraliza a entrada HTTP no Nginx.
-- Evita publicar diretamente a porta 3000 no host.
-- Permite manter a configuração do proxy em um arquivo versionável no projeto.
-- Encaminha informações da requisição por cabeçalhos apropriados.
-- Registra as requisições recebidas pelo proxy.
-- Oculta a versão do Nginx nas respostas HTTP.
+```powershell
+curl.exe -sS -o NUL -w "HTTP=%{http_code}`n" http://juiceshop.local/
+curl.exe -k -sS -o NUL -w "HTTPS=%{http_code}`n" https://juiceshop.local/
+curl.exe -k -sS -D - -o NUL https://juiceshop.local/
+```
 
-### Limitações e cuidados de segurança
+Resultados observados: HTTP redirecionado com status `301`, HTTPS respondeu com `200`, e os cabeçalhos de segurança configurados foram apresentados na resposta.
 
-O proxy reverso não corrige as vulnerabilidades intencionais do OWASP Juice Shop, não substitui autenticação, não implementa por si só filtragem de requisições maliciosas e não fornece HTTPS nesta configuração.
+### 5. Verificar limite de requisições
 
-A rede `juice-internal` é uma rede bridge compartilhada pelos serviços. Outros contêineres conectados à mesma rede também poderão alcançar o serviço interno. Portanto, a ausência de publicação da porta 3000 no host não significa isolamento absoluto entre contêineres.
+O Nginx está configurado com limite de 5 requisições por segundo, tolerância (`burst`) de 10 e resposta `429` para excesso de requisições. Em um teste de 40 solicitações, foram observadas 24 respostas `200` e 16 respostas `429`. Esse resultado é específico daquela execução.
 
-O mapeamento `127.0.0.1:8080:8080` limita a publicação do Nginx à interface de loopback do host. Não foi configurado acesso externo, encaminhamento de portas no roteador ou exposição do serviço à internet.
+### 6. Verificar a exposição local
 
-O Juice Shop é intencionalmente vulnerável e deve continuar sendo utilizado somente para treinamento, com dados fictícios e sem credenciais reais.
+As portas 80 e 443 do Nginx são vinculadas a `127.0.0.1`, e o NodePort 30080 não deve estar diretamente publicado no loopback do Windows. A validação anterior de `127.0.0.1:30080` retornou `False`.
 
-### Evidências da Etapa 3
+```powershell
+docker ps
+Test-NetConnection 127.0.0.1 -Port 30080 -InformationLevel Quiet
+```
 
-- `E3-01-estado-inicial-docker.png`
-- `E3-02-configuracao-nginx-validada.png`
-- `E3-03-acesso-via-nginx-porta-direta-bloqueada.png`
-- `E3-04-server-tokens-headers-logs.png`
-- `E3-05-arquivos-finais-validacao.png`
+## Certificado TLS
 
-As capturas devem corresponder aos testes efetivamente realizados e ser armazenadas junto da documentação do projeto.
+O certificado `nginx-edge/certs/juiceshop.local.crt` é autoassinado e possui SAN para `juiceshop.local` e `127.0.0.1`. Clientes que não confiam nele podem apresentar erro de validação. Não use `-k` como solução permanente para serviços reais.
 
-### Status
+A chave privada `nginx-edge/certs/juiceshop.local.key` é confidencial e deve permanecer fora do Git. O arquivo `.gitignore` contém regras para ignorar arquivos `.key` e `.pem` nesse diretório.
 
-A arquitetura com Nginx, a validação da configuração, o acesso pelo proxy e a ausência de publicação direta da porta 3000 foram comprovados. A revisão final da documentação e o registro das alterações no Git fazem parte do fechamento desta etapa.
+## Recuperação após recriar o cluster
+
+O endereço do nó kind usado no `proxy_pass` do Nginx pode mudar se o cluster for recriado. Consulte o endereço atual e atualize `nginx-edge/nginx.conf` antes de recarregar o Nginx.
+
+```powershell
+kubectl get nodes -o wide
+docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" juiceshop-local-control-plane
+docker exec juice-shop-nginx-edge nginx -t
+docker exec juice-shop-nginx-edge nginx -s reload
+```
+
+Confirme que o endereço usado no `proxy_pass` corresponde ao ambiente atual antes de executar o reload.
+
+## Segurança e limites do laboratório
+
+- O Juice Shop é intencionalmente vulnerável e deve ser usado apenas em ambiente autorizado.
+- A configuração final documentada é local: o Nginx publica portas somente em `127.0.0.1`.
+- O acesso externo foi desativado após a demonstração: encaminhamento de portas do roteador, regra `portproxy` do Windows e regras específicas de firewall para a porta 3000 foram removidos.
+- O laboratório permaneceu disponível localmente para validação e gravação da demonstração.
+- Não usar dados reais, credenciais pessoais ou senhas reutilizadas.
+- O limite de requisições e os cabeçalhos HTTP são medidas complementares; não tornam o Juice Shop seguro para produção.
+- O certificado autoassinado é apropriado apenas para o laboratório e não equivale a um certificado emitido por uma autoridade confiável.
+
+## Evidências e documentação complementar
+
+As capturas de tela das Etapas 2 a 6 estão em `docs/evidencias/`, organizadas por etapa. A pasta contém 108 imagens, distribuídas entre E2 (9), E3 (7), E4 (17), E5 (22) e E6 (53).
+
+A evidência específica da Etapa 1 ainda deve ser localizada ou produzida, se for exigida na entrega. Não afirmar que existe uma captura que não foi localizada.
+
+Documentos principais:
+
+- `README.md`: guia geral do projeto.
+- `ARQUITETURA-ETAPA6.md`: decisões, arquitetura, segurança, validações e limitações da Etapa 6.
+- `docs/evidencias/`: capturas de tela de execução.
+
+## Dificuldades e decisões
+
+- A implantação inicial foi organizada com Docker e Docker Compose antes da evolução para Kubernetes com kind.
+- O Nginx Edge foi adotado como ponto único de entrada HTTP/HTTPS local.
+- O certificado autoassinado exigiu distinguir falha de confiança do certificado de falha de conectividade da aplicação.
+- O endereço do nó kind pode mudar após recriação do cluster, exigindo revisão do upstream do Nginx.
+- O limite de requisições foi validado com respostas HTTP `429` em teste controlado.
+- O acesso externo foi desativado depois da demonstração para reduzir exposição desnecessária.
+
+## Melhorias futuras
+
+- Automatizar a descoberta do endereço do nó kind e a atualização do upstream.
+- Automatizar os testes HTTP/HTTPS e a validação dos cabeçalhos.
+- Produzir ou localizar a evidência pendente da Etapa 1.
+- Revisar os arquivos de backup e manter apenas os artefatos necessários para a entrega.
+- Demonstração em vídeo gravada e validada: docs/demonstracao/demonstracao-juice-shop.mp4.
+
+## Encerramento e desmontagem
+
+A demonstração foi gravada e o arquivo foi reproduzido para validar sua integridade básica. Não desmontar o ambiente antes da revisão final das evidências.
+
+Após a entrega, se autorizado, o laboratório pode ser encerrado removendo primeiro o Nginx Edge e depois o cluster kind. Esses comandos são destrutivos para o ambiente local e devem ser executados somente após a confirmação de que ele não será mais necessário.
+
+```powershell
+docker rm -f juice-shop-nginx-edge
+kind delete cluster --name juiceshop-local
+```
+
+A desmontagem acima remove o contêiner Edge e o cluster local. Ela não substitui a revisão das regras do roteador, do firewall e de outros mecanismos de exposição.
+
+## Estado da entrega
+
+- Etapas 1 a 6: desenvolvidas e documentadas.
+- Etapa 7: README revisado, vídeo gravado e validações locais realizadas; revisão final da entrega pendente.
+- Publicação do repositório: pendente de validação e autorização.
+- Gravação da demonstração: concluída; arquivo salvo em docs/demonstracao/demonstracao-juice-shop.mp4.

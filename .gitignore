@@ -1,3 +1,6 @@
 # Certificados e chaves privadas locais
 nginx-edge/certs/*.key
 nginx-edge/certs/*.pem
+# Backups locais de documentação
+*.bak.md
+README-final-candidato.md
