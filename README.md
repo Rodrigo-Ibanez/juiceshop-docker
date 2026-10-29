@@ -90,14 +90,25 @@ A pasta `backup-etapa6/` contém arquivos de referência. Inspecione seu conteú
 
 ## Implantação a partir de um clone limpo
 
-Este procedimento reproduz o ambiente em um clone novo do repositório. Execute os comandos no PowerShell, na raiz do clone, com Docker Desktop em execução e `git`, `kind` e `kubectl` instalados.
+Pré-requisitos: Docker Desktop em execução, PowerShell, Git, `kind`, `kubectl` e acesso à internet. Execute os comandos na raiz do repositório.
 
-**Importante:** o procedimento cria um cluster chamado `juiceshop-local` e um contêiner chamado `juice-shop-nginx-edge`. Se esses recursos já existirem no Docker local, não os remova sem confirmar que podem ser recriados.
+O nome padrão do cluster é `juiceshop-local`. Para testar em paralelo com outro ambiente, use um nome exclusivo e ajuste o upstream do Nginx conforme indicado abaixo.
 
 ### 1. Criar o cluster
 
+Para a implantação padrão:
+
 ```powershell
 kind create cluster --config .\kind-config.yaml
+kubectl wait --for=condition=Ready nodes --all --timeout=180s
+```
+
+Para uma prova isolada, copie o arquivo de configuração e altere o nome do cluster antes de criá-lo:
+
+```powershell
+Copy-Item .\kind-config.yaml .\kind-config-prova.yaml
+(Get-Content .\kind-config-prova.yaml) -replace 'name: juiceshop-local', 'name: juiceshop-prova' | Set-Content .\kind-config-prova.yaml
+kind create cluster --config .\kind-config-prova.yaml
 kubectl wait --for=condition=Ready nodes --all --timeout=180s
 ```
 
@@ -115,7 +126,7 @@ Confirme que as duas réplicas estão prontas.
 
 ### 3. Gerar o certificado TLS local
 
-Gere um certificado autoassinado para o laboratório. A chave privada é local e não deve ser versionada.
+A chave privada é local e não deve ser versionada.
 
 ```powershell
 docker run --rm -v "${PWD}\nginx-edge\certs:/certs" alpine/openssl req -x509 -nodes -days 30 -newkey rsa:2048 -keyout /certs/juiceshop.local.key -out /certs/juiceshop.local.crt -subj "/CN=juiceshop.local" -addext "subjectAltName=DNS:juiceshop.local,IP:127.0.0.1"
@@ -123,36 +134,42 @@ docker run --rm -v "${PWD}\nginx-edge\certs:/certs" alpine/openssl req -x509 -no
 
 ### 4. Iniciar o Nginx Edge
 
-Confirme que `nginx-edge/nginx.conf` contém o upstream abaixo:
+Para o cluster padrão, o upstream é:
 
 ```nginx
 proxy_pass http://juiceshop-local-control-plane:30080;
 ```
 
-Crie o contêiner Nginx Edge na rede Docker `kind`, publicando as portas somente no loopback do Windows. Execute este comando apenas se o contêiner ainda não existir:
+Para a prova isolada com `juiceshop-prova`, altere somente a cópia local de `nginx-edge/nginx.conf` para:
+
+```nginx
+proxy_pass http://juiceshop-prova-control-plane:30080;
+```
+
+Crie o Nginx Edge na rede `kind`, publicando as portas apenas no loopback do Windows:
 
 ```powershell
-docker run -d --name juice-shop-nginx-edge --restart unless-stopped --network kind -p 127.0.0.1:80:80 -p 127.0.0.1:443:443 -v "${PWD}\nginx-edge\nginx.conf:/etc/nginx/nginx.conf:ro" -v "${PWD}\nginx-edge\certs:/etc/nginx/certs:ro" nginx:1.28-alpine
+docker run -d --name juice-shop-nginx-edge-prova --network kind -p 127.0.0.1:8080:80 -p 127.0.0.1:8443:443 -v "${PWD}\nginx-edge\nginx.conf:/etc/nginx/nginx.conf:ro" -v "${PWD}\nginx-edge\certs:/etc/nginx/certs:ro" nginx:1.28-alpine
 ```
 
 ### 5. Validar o ambiente
 
 ```powershell
-docker exec juice-shop-nginx-edge nginx -t
-docker ps --filter "name=juice-shop-nginx-edge"
+docker exec juice-shop-nginx-edge-prova nginx -t
 kubectl -n juiceshop get deployment,service,pods -o wide
-curl.exe -sS -o NUL -w "HTTP=%{http_code}`n" -H "Host: juiceshop.local" http://127.0.0.1/
-curl.exe -k -sS -o NUL -w "HTTPS=%{http_code}`n" --resolve juiceshop.local:443:127.0.0.1 https://juiceshop.local/
+curl.exe -sS -o NUL -w "HTTP=%{http_code}`n" -H "Host: juiceshop.local" http://127.0.0.1:8080/
+curl.exe -k -sS -o NUL -w "HTTPS=%{http_code}`n" --resolve juiceshop.local:8443:127.0.0.1 https://juiceshop.local:8443/
 ```
 
-Resultado esperado: configuração Nginx válida, duas réplicas prontas, HTTP `301` e HTTPS `200`.
+Resultado esperado: Nginx válido, duas réplicas prontas, HTTP `301` e HTTPS `200`.
 
 ### Segurança
 
-- As portas publicadas ficam limitadas a `127.0.0.1`.
+- As portas são publicadas somente em `127.0.0.1`.
 - O certificado é autoassinado e destinado ao laboratório.
 - Não exponha o Juice Shop vulnerável à internet.
-- A chave privada não deve ser adicionada ao Git.
+- Não versione a chave privada nem arquivos temporários da prova.
+- A prova isolada usa os nomes `juiceshop-prova` e `juice-shop-nginx-edge-prova`, evitando conflitos com o ambiente padrão.
 
 
 ## Implantação e validação
