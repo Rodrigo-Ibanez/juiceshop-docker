@@ -1,0 +1,20 @@
+TEARDOWN FINAL — OWASP JUICE SHOP
+Data: 2026-10-29 14:44:50
+
+1. KIND
+Nenhum cluster Kind encontrado após o teardown.
+2. CONTAINERS DO PROJETO
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+
+3. DOCKER COMPOSE
+NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
+
+4. PORTAS 80, 443, 3000 E 30080
+Nenhuma dessas portas está em escuta.
+
+5. ENTRADA NO ARQUIVO HOSTS
+Nenhuma entrada encontrada.
+
+6. EXPOSICAO EXTERNA
+A exposição externa foi desativada após a demonstração.
+Este registro não substitui a verificação independente do roteador.

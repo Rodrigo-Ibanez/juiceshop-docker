@@ -203,24 +203,31 @@ Documentos principais:
 
 ## Encerramento e desmontagem
 
-A demonstração foi gravada e o arquivo foi reproduzido para validar sua integridade básica. Não desmontar o ambiente antes da revisão final das evidências.
+**Estado: teardown executado em 29/10/2026.**
 
-Após a entrega, se autorizado, o laboratório pode ser encerrado removendo primeiro o Nginx Edge e depois o cluster kind. Esses comandos são destrutivos para o ambiente local e devem ser executados somente após a confirmação de que ele não será mais necessário.
+Após a demonstração, o ambiente local foi desmontado. Foram removidos o contêiner Nginx Edge, o cluster Kind, os recursos do Docker Compose e sua rede. A entrada `juiceshop.local` também foi removida do arquivo `hosts`, e o cache DNS foi atualizado.
+
+Comandos executados:
 
 ```powershell
 docker rm -f juice-shop-nginx-edge
 kind delete cluster --name juiceshop-local
+docker compose down -v
 ```
 
-A desmontagem acima remove o contêiner Edge e o cluster local. Ela não substitui a revisão das regras do roteador, do firewall e de outros mecanismos de exposição.
+A validação local posterior confirmou que não havia cluster Kind, containers do projeto, processos escutando nas portas 80, 443, 3000 e 30080, nem entrada `juiceshop.local` no arquivo `hosts`.
+
+A exposição externa foi desativada após a demonstração. A validação local não substitui uma verificação independente das configurações do roteador.
 
 ## Estado da entrega
 
 - **Etapas 1 a 6:** desenvolvidas e documentadas.
-- **Etapa 7:** README revisado, vídeo de demonstração gravado e validações locais realizadas; revisão final da entrega em andamento.
-- **Publicação do repositório:** concluída no GitHub, na branch `master`. Último commit: `4813666` — `Finaliza documentação e evidências do projeto Juice Shop`.
-- **Demonstração:** vídeo disponível em `docs/demonstracao/demonstracao-juice-shop.mp4`, enviado ao GitHub via Git LFS.
-- **Evidências:** capturas das Etapas 2 a 6 disponíveis em `docs/evidencias/`; a evidência específica da Etapa 1 ainda precisa ser localizada ou produzida, caso seja exigida.
-- **Segurança:** o acesso externo foi desativado após a demonstração. A revisão final dos arquivos e do histórico Git ainda precisa ser concluída.
-- **Teardown:** execução e evidências pendentes de confirmação.
-- **Reprodução por terceiros:** ainda não confirmada; não afirmar que outra pessoa testou o procedimento até que isso ocorra.
+- **Etapa 7:** documentação revisada, vídeo de demonstração gravado e validações locais realizadas.
+- **Repositório:** publicado no GitHub, na branch `master`. A revisão final e a publicação das evidências do teardown estão em andamento.
+- **Demonstração:** `docs/demonstracao/demonstracao-juice-shop.mp4`, versionado via Git LFS.
+- **Evidências:** capturas das Etapas 2 a 6 e registros finais disponíveis em `docs/evidencias/`. A evidência específica da Etapa 1 deve ser confirmada caso seja exigida.
+- **Teardown:** concluído. Cluster Kind, containers do projeto, recursos do Docker Compose e rede foram removidos. A entrada `juiceshop.local` foi removida do arquivo `hosts`.
+- **Validação local após o teardown:** nenhum cluster Kind encontrado, nenhum container do projeto listado, nenhuma das portas 80, 443, 3000 e 30080 em escuta e nenhuma entrada `juiceshop.local` no arquivo `hosts`.
+- **Segurança:** o acesso externo foi desativado após a demonstração. A validação local não substitui uma verificação independente do roteador.
+- **Reprodução por terceiros:** ainda não confirmada. Não afirmar que outra pessoa reproduziu o procedimento até que isso ocorra.
+- **Revisão do histórico Git e das imagens:** conferir antes da publicação final para evitar exposição acidental de dados sensíveis.
