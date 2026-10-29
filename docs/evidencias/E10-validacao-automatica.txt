@@ -1,0 +1,24 @@
+Validacao automatica Juice Shop
+Data: 2026-10-29 16:49:27
+Passou: 12
+Falhou: 0
+
+
+Teste                               Resultado Detalhes
+-----                               --------- --------
+Cluster kind                        PASSOU    juiceshop-local
+Replicas Kubernetes                 PASSOU    2/2 prontas
+Configuracao Nginx                  PASSOU    Resultado de nginx -t
+Upstream por nome                   PASSOU    Nome do no do kind
+Portas somente locais               PASSOU    80/tcp -> 127.0.0.1:80
+                                              443/tcp -> 127.0.0.1:443
+Redirecionamento HTTP               PASSOU    HTTP=301; Location=https://juiceshop.local/
+Resposta HTTPS                      PASSOU    HTTPS=200
+Cabecalho Referrer-Policy           PASSOU    Esperado='strict-origin-when-cross-origin';
+                                              recebido='strict-origin-when-cross-origin'
+Cabecalho X-Frame-Options           PASSOU    Esperado='SAMEORIGIN'; recebido='SAMEORIGIN'
+Cabecalho X-Content-Type-Options    PASSOU    Esperado='nosniff'; recebido='nosniff'
+Cabecalho Strict-Transport-Security PASSOU    Esperado='max-age=300'; recebido='max-age=300'
+Ocultacao versao Nginx              PASSOU    Server='nginx'
+
+
