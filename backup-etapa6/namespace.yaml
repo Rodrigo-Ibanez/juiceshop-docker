@@ -1,7 +1,0 @@
-# Namespace dedicado para os recursos do Juice Shop.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: juiceshop
-  labels:
-    app.kubernetes.io/name: juice-shop
