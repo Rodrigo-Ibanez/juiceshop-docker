@@ -5,23 +5,41 @@ Data: 2026-10-29 14:38:39
 ?? docs/evidencias/estado-atual-antes-do-teardown.png
 e63430d Atualiza estado final da entrega
 
+Observacao: o marcador ?? indica que a captura ainda nao estava
+rastreada pelo Git naquele momento.
+
 === CLUSTER KIND ===
-juiceshop-local
+Nome: juiceshop-local
 
 === NAMESPACE ===
-NAME        STATUS   AGE juiceshop   Active   34h
+NAME        STATUS   AGE
+juiceshop   Active   34h
 
-=== RECURSOS KUBERNETES ===
-NAME                         READY   UP-TO-DATE   AVAILABLE   AGE deployment.apps/juice-shop   2/2     2            2           34h  NAME                 TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE service/juice-shop   NodePort   10.96.99.102   <none>        3000:30080/TCP   34h  NAME                              READY   STATUS    RESTARTS       AGE pod/juice-shop-5bcf55488b-qtm5n   1/1     Running   1 (7h1m ago)   33h pod/juice-shop-5bcf55488b-wg2kl   1/1     Running   1 (7h1m ago)   33h
+=== DEPLOYMENT ===
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/juice-shop 2/2     2            2           34h
+
+=== SERVICE ===
+NAME                TYPE       CLUSTER-IP    EXTERNAL-IP   PORT(S)          AGE
+service/juice-shop  NodePort   10.96.99.102  <none>        3000:30080/TCP   34h
+
+=== PODS ===
+NAME                              READY   STATUS    RESTARTS       AGE
+juice-shop-5bcf55488b-qtm5n       1/1     Running   1 (7h1m ago)   33h
+juice-shop-5bcf55488b-wg2kl       1/1     Running   1 (7h1m ago)   33h
 
 === CONTAINER NGINX ===
-CONTAINER ID   IMAGE               COMMAND                  CREATED       STATUS       PORTS                                          NAMES c89a8e8dfa33   nginx:1.28-alpine   "/docker-entrypoint.ÔÇª"   6 hours ago   Up 6 hours   127.0.0.1:80->80/tcp, 127.0.0.1:443->443/tcp   juice-shop-nginx-edge
+CONTAINER ID   IMAGE               COMMAND                  CREATED       STATUS       PORTS                                          NAMES
+c89a8e8dfa33   nginx:1.28-alpine   "/docker-entrypoint.…"   6 hours ago   Up 6 hours   127.0.0.1:80->80/tcp, 127.0.0.1:443->443/tcp   juice-shop-nginx-edge
 
 === PORTAS LOCAIS ===
+LocalAddress   LocalPort   OwningProcess
+127.0.0.1      443         14732
+127.0.0.1      80          14732
 
-LocalAddress LocalPort OwningProcess
------------- --------- -------------
-127.0.0.1          443         14732
-127.0.0.1           80         14732
+=== CAPTURA PRINCIPAL ===
+docs/evidencias/estado-atual-antes-do-teardown.png
 
-
+Observacao: este arquivo registra o estado anterior ao teardown.
+O resultado da desmontagem esta documentado separadamente em
+E7-teardown-final.txt.
