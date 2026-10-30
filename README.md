@@ -129,7 +129,7 @@ Confirme que as duas réplicas estão prontas.
 A chave privada é local e não deve ser versionada.
 
 ```powershell
-docker run --rm -v "${PWD}\nginx-edge\certs:/certs" alpine/openssl req -x509 -nodes -days 30 -newkey rsa:2048 -keyout /certs/juiceshop.local.key -out /certs/juiceshop.local.crt -subj "/CN=juiceshop.local" -addext "subjectAltName=DNS:juiceshop.local,IP:127.0.0.1"
+docker run --rm -v "${PWD}\nginx-edge\certs:/certs" alpine/openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/juiceshop.local.key -out /certs/juiceshop.local.crt -subj "/CN=juiceshop.local" -addext "subjectAltName=DNS:juiceshop.local,IP:127.0.0.1"
 ```
 
 ### 4. Iniciar o Nginx Edge
