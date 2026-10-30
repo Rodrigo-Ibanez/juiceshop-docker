@@ -1,6 +1,8 @@
 # Certificados e chaves privadas locais
-nginx-edge/certs/*.key
-nginx-edge/certs/*.pem
+nginx/edge/certs/*.key
+nginx/edge/certs/*.pem
+# Arquivos locais da reprodução de prova
+prova-local/
 # Backups locais de documentação
 *.bak.md
 README-final-candidato.md

@@ -1,0 +1,38 @@
+# GITLEAKS — AUDITORIA DE SEGURANÇA
+
+## 1. Varredura do histórico Git
+
+**Data:** 2026-10-30 12:03
+**Ferramenta:** Gitleaks 8.30.1
+**Comando:** `gitleaks git --redact --log-opts="--all"`
+
+**Resultado:**
+- 18 commits analisados.
+- Aproximadamente 67,52 KB examinados.
+- Nenhum segredo detectado.
+- Tempo de execução: 506 ms.
+
+## 2. Varredura dos arquivos destinados à publicação
+
+**Data:** 2026-10-30 14:46
+**Ferramenta:** Gitleaks 8.30.1
+**Comando:** `gitleaks dir $auditoria --redact --no-banner --report-format json --report-path $relatorioFinal`
+
+**Escopo:**
+- Cópia temporária dos arquivos do projeto.
+- Diretórios `.git/` e `prova-local/` excluídos da cópia.
+- Arquivos `*.bak.md` e `README-final-candidato.md` excluídos da cópia.
+
+**Resultado:**
+- 138 arquivos copiados.
+- Aproximadamente 169,51 MB examinados.
+- Nenhum segredo detectado.
+- Código de saída: 0.
+
+## 3. Observações e limitações
+
+A varredura do histórico Git cobre as referências locais disponíveis no momento da execução. A varredura dos arquivos de publicação analisou a cópia temporária descrita acima.
+
+A chave privada usada exclusivamente na reprodução local permanece em `prova-local/`, diretório ignorado pelo Git e excluído da cópia auditada. Sua presença local não significa que tenha sido incluída nos arquivos destinados à publicação.
+
+Essas verificações não garantem ausência absoluta de dados sensíveis em todas as imagens, arquivos binários ou referências remotas. A revisão visual e documental das evidências continua sendo uma verificação complementar.

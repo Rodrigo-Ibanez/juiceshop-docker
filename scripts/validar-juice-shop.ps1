@@ -151,7 +151,7 @@ $results | Format-Table -AutoSize -Wrap
 $failed = @($results | Where-Object { $_.Resultado -eq "FALHOU" }).Count
 $passed = @($results | Where-Object { $_.Resultado -eq "PASSOU" }).Count
 
-$reportDir = Join-Path $PSScriptRoot "..\docs\evidencias"
+$reportDir = Join-Path $PSScriptRoot "..\evidencias"
 New-Item -ItemType Directory -Force $reportDir | Out-Null
 $reportPath = Join-Path $reportDir "E10-validacao-automatica.txt"
 

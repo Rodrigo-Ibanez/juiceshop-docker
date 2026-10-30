@@ -1,20 +1,26 @@
 # OWASP Juice Shop — Docker, Kubernetes e Nginx
 
-## Objetivo
+## 1. Objetivo
 
-Documentar a implantação local do OWASP Juice Shop usando Docker, Docker Compose, Kubernetes com kind e Nginx como proxy reverso HTTPS.
+Documentar a implantação e validação local do OWASP Juice Shop, evoluindo de Docker Compose para Kubernetes com kind e utilizando Nginx Edge como proxy reverso HTTPS.
 
-> O OWASP Juice Shop é intencionalmente vulnerável e destinado a treinamento. Use somente dados fictícios e não exponha o laboratório publicamente sem autorização.
+O OWASP Juice Shop é intencionalmente vulnerável e destinado a treinamento. Utilize somente dados fictícios, credenciais descartáveis e ambientes autorizados. Não exponha a aplicação publicamente sem autorização e avaliação de risco.
 
-## Estado do projeto
+## 2. Estado do projeto
 
-As Etapas 1 a 6 foram desenvolvidas e documentadas. A arquitetura final utiliza um cluster Kubernetes local criado com kind, duas réplicas do Juice Shop e um Nginx Edge que publica HTTP e HTTPS somente em 127.0.0.1.
+- **Etapas 1 a 6:** implantação, evolução da arquitetura e validações realizadas.
+- **Etapa 7:** documentação, revisão de segurança e consolidação das evidências.
+- **Etapa 8:** publicação final e revisão do repositório público.
 
-A documentação técnica detalhada está em [ARQUITETURA-ETAPA6.md](ARQUITETURA-ETAPA6.md).
+O ambiente original foi desmontado em 29/10/2026. Portanto, os resultados de execução descritos neste documento são registros históricos de validações realizadas antes do teardown.
 
-## Ambiente validado
+A reprodução em um clone separado foi realizada em 29/10/2026 e está documentada em `evidencias/E9-reproducao-clone.md`.
 
-| Componente | Versão ou configuração observada |
+## 3. Ambiente utilizado
+
+Versões observadas durante a validação em 29/10/2026:
+
+| Componente | Versão ou configuração |
 |---|---|
 | Sistema operacional | Windows 11 Pro, build 26200 |
 | Docker Engine | 29.6.2 |
@@ -23,24 +29,26 @@ A documentação técnica detalhada está em [ARQUITETURA-ETAPA6.md](ARQUITETURA
 | kubectl | v1.36.1 |
 | Kubernetes do nó kind | v1.37.0 |
 | Sistema operacional do nó | Debian GNU/Linux 13 |
-| Réplicas disponíveis | 2/2 |
-| Imagem do Juice Shop | `bkimminich/juice-shop:v20.3.0` |
+| Réplicas do Juice Shop | 2 |
+| Imagem da aplicação | `bkimminich/juice-shop:v20.3.0` |
 | Nginx Edge | `nginx:1.28-alpine` |
 
-As versões representam o ambiente observado em 29/10/2026 e podem mudar em instalações futuras.
+As versões podem mudar em instalações futuras.
 
-## Arquitetura final
+## 4. Arquitetura final
 
 ```text
 Navegador no Windows
         |
+        | https://juiceshop.local
         | 127.0.0.1:80 / 443
         v
-Nginx Edge (Docker)
+Nginx Edge — Docker
         |
-        | NodePort 30080 na rede Docker kind
+        | Rede Docker: kind
+        | NodePort 30080
         v
-Nó do cluster kind
+Nó kind: juiceshop-local-control-plane
         |
         v
 Service Kubernetes: juice-shop
@@ -49,161 +57,188 @@ Service Kubernetes: juice-shop
 Deployment: 2 réplicas
         |
         v
-Pods do OWASP Juice Shop: 3000
+Pods OWASP Juice Shop — porta 3000
 ```
 
-O nome local utilizado é `juiceshop.local`, associado a `127.0.0.1` no arquivo hosts do Windows. O certificado TLS é autoassinado e não será confiável automaticamente em todos os clientes.
+O hostname `juiceshop.local` é associado a `127.0.0.1` no arquivo `hosts` do Windows.
 
-## Responsabilidades das tecnologias
+O Nginx Edge publica as portas 80 e 443 exclusivamente no loopback. O NodePort 30080 é acessado pela rede Docker `kind`, sem publicação direta dessa porta no Windows.
 
-- **Docker:** executa contêineres.
-- **Docker Compose:** descreve a implantação inicial das Etapas 2 e 3.
-- **kind:** cria um cluster Kubernetes local dentro de contêineres.
-- **Kubernetes:** gerencia Deployment, Pods, réplicas e Service.
-- **Nginx Edge:** centraliza o acesso HTTP/HTTPS local, aplica redirecionamento, cabeçalhos, limite de requisições e logs.
+## 5. Responsabilidades das tecnologias
 
-Os arquivos Compose documentam a arquitetura inicial. A arquitetura final é Kubernetes com Nginx Edge.
+| Tecnologia | Responsabilidade neste projeto |
+|---|---|
+| Docker | Executa os contêineres e fornece a rede utilizada pelos componentes. |
+| Docker Compose | Descreve a implantação inicial do Juice Shop e do Nginx nas Etapas 2 e 3. |
+| kind | Cria um cluster Kubernetes local usando contêineres Docker como nós. |
+| Kubernetes | Gerencia Deployment, Pods, réplicas, verificações de saúde e Service. |
+| Nginx Edge | Centraliza o acesso HTTP/HTTPS, termina TLS, redireciona HTTP, aplica cabeçalhos, rate limit e registra requisições. |
 
-## Estrutura do projeto
+Os arquivos Docker Compose representam a arquitetura inicial do projeto. A arquitetura final validada utiliza Kubernetes com kind e Nginx Edge independente.
+
+## 6. Estrutura do repositório
 
 ```text
 .
 |-- README.md
 |-- ARQUITETURA-ETAPA6.md
-|-- docker-compose.yml
-|-- nginx.conf
+|-- .gitignore
+|-- .gitattributes
 |-- kind-config.yaml
+|-- docker/
+|   `-- docker-compose.yml
+|-- nginx/
+|   |-- nginx.conf
+|   `-- edge/
+|       |-- nginx.conf
+|       `-- certs/
+|           `-- juiceshop.local.crt
 |-- k8s/
 |   |-- namespace.yaml
 |   |-- deployment.yaml
 |   `-- service.yaml
-|-- nginx-edge/
-|   |-- nginx.conf
-|   `-- certs/
-|       |-- juiceshop.local.crt
-|       `-- juiceshop.local.key (privado; não versionar)
-`-- docs/evidencias/
+|-- scripts/
+|   `-- validar-juice-shop.ps1
+|-- docs/
+|   |-- etapas/
+|   |   |-- etapa-1-ambiente-docker.md
+|   |   |-- etapa-2-juice-shop-docker-compose.md
+|   |   |-- etapa-3-nginx-proxy-reverso.md
+|   |   |-- etapa-4-cluster-kubernetes-kind.md
+|   |   |-- etapa-5-implantacao-kubernetes.md
+|   |   `-- etapa-6-nginx-edge-https.md
+|   `-- demonstracao/
+|       `-- demonstracao-juice-shop.mp4
+`-- evidencias/
 ```
 
-A pasta `backup-etapa6/` contém arquivos de referência. Inspecione seu conteúdo antes de decidir se deve ser incluída na entrega.
+A chave privada `nginx/edge/certs/juiceshop.local.key` deve ser gerada localmente e não deve ser versionada.
 
+A pasta `prova-local/` contém arquivos específicos da reprodução de teste e é ignorada pelo Git. Ela não faz parte da configuração canônica do projeto.
 
-## Implantação a partir de um clone limpo
+## 7. Pré-requisitos para reprodução
 
-Pré-requisitos: Docker Desktop em execução, PowerShell, Git, `kind`, `kubectl` e acesso à internet. Execute os comandos na raiz do repositório.
+- Windows com Docker Desktop em execução.
+- PowerShell.
+- Git.
+- kind.
+- kubectl.
+- Acesso à internet para baixar as imagens necessárias.
+- Permissão administrativa para editar o arquivo `hosts`.
 
-O nome padrão do cluster é `juiceshop-local`. Para testar em paralelo com outro ambiente, use um nome exclusivo e ajuste o upstream do Nginx conforme indicado abaixo.
+Os comandos desta seção devem ser executados na raiz do repositório.
 
-### 1. Criar o cluster
+## 8. Reprodução da arquitetura padrão
 
-Para a implantação padrão:
+### 8.1. Conferir as ferramentas
+
+```powershell
+docker --version
+docker info
+git --version
+kind version
+kubectl version --client
+```
+
+### 8.2. Criar o cluster kind
+
+O arquivo `kind-config.yaml` define o cluster `juiceshop-local`.
 
 ```powershell
 kind create cluster --config .\kind-config.yaml
 kubectl wait --for=condition=Ready nodes --all --timeout=180s
+kubectl get nodes -o wide
 ```
 
-Para uma prova isolada, copie o arquivo de configuração e altere o nome do cluster antes de criá-lo:
-
-```powershell
-Copy-Item .\kind-config.yaml .\kind-config-prova.yaml
-(Get-Content .\kind-config-prova.yaml) -replace 'name: juiceshop-local', 'name: juiceshop-prova' | Set-Content .\kind-config-prova.yaml
-kind create cluster --config .\kind-config-prova.yaml
-kubectl wait --for=condition=Ready nodes --all --timeout=180s
-```
-
-### 2. Implantar o Juice Shop
+### 8.3. Implantar o Juice Shop
 
 ```powershell
 kubectl apply -f .\k8s\namespace.yaml
 kubectl apply -f .\k8s\deployment.yaml
 kubectl apply -f .\k8s\service.yaml
+
 kubectl -n juiceshop rollout status deployment/juice-shop --timeout=300s
 kubectl -n juiceshop get deployment,service,pods -o wide
 ```
 
-Confirme que as duas réplicas estão prontas.
+Confirme que as duas réplicas estão disponíveis e que os Pods estão prontos antes de continuar.
 
-### 3. Gerar o certificado TLS local
+### 8.4. Gerar o certificado TLS local
 
-A chave privada é local e não deve ser versionada.
+A chave privada deve permanecer no computador e fora do Git.
+
+Gere o certificado e a chave juntos, no mesmo comando, para garantir que pertençam ao mesmo par:
 
 ```powershell
-docker run --rm -v "${PWD}\nginx-edge\certs:/certs" alpine/openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /certs/juiceshop.local.key -out /certs/juiceshop.local.crt -subj "/CN=juiceshop.local" -addext "subjectAltName=DNS:juiceshop.local,IP:127.0.0.1"
+New-Item -ItemType Directory -Force .\nginx\edge\certs | Out-Null
+
+docker run --rm `
+  -v "${PWD}\nginx\edge\certs:/certs" `
+  alpine/openssl req -x509 -nodes -days 365 -newkey rsa:2048 `
+  -keyout /certs/juiceshop.local.key `
+  -out /certs/juiceshop.local.crt `
+  -subj "/CN=juiceshop.local" `
+  -addext "subjectAltName=DNS:juiceshop.local,IP:127.0.0.1"
 ```
 
-### 4. Iniciar o Nginx Edge
+Antes de iniciar o Nginx, confira se o certificado e a chave correspondem:
 
-Para o cluster padrão, o upstream é:
+```powershell
+$certModulus = docker run --rm -v "${PWD}\nginx\edge\certs:/certs" alpine/openssl x509 -noout -modulus -in /certs/juiceshop.local.crt
+$keyModulus = docker run --rm -v "${PWD}\nginx\edge\certs:/certs" alpine/openssl rsa -noout -modulus -in /certs/juiceshop.local.key
+
+if ($certModulus -ne $keyModulus) {
+    throw "O certificado e a chave privada não correspondem."
+}
+
+Write-Host "OK: certificado e chave correspondem."
+```
+
+Não compartilhe nem versione o arquivo `.key`.
+
+### 8.5. Configurar o hostname local
+
+Abra o PowerShell como administrador e execute:
+
+```powershell
+$hostsPath = "$env:SystemRoot\System32\drivers\etc\hosts"
+Add-Content -Path $hostsPath -Value "`n127.0.0.1 juiceshop.local"
+ipconfig /flushdns
+```
+
+Se a entrada já existir, não a duplique.
+
+### 8.6. Iniciar o Nginx Edge
+
+A configuração versionada em `nginx/edge/nginx.conf` utiliza o upstream:
 
 ```nginx
 proxy_pass http://juiceshop-local-control-plane:30080;
 ```
 
-Para a prova isolada com `juiceshop-prova`, altere somente a cópia local de `nginx-edge/nginx.conf` para:
-
-```nginx
-proxy_pass http://juiceshop-prova-control-plane:30080;
-```
-
-Crie o Nginx Edge na rede `kind`, publicando as portas apenas no loopback do Windows:
+O contêiner Nginx precisa estar conectado à rede Docker `kind`.
 
 ```powershell
-docker run -d --name juice-shop-nginx-edge-prova --network kind -p 127.0.0.1:8080:80 -p 127.0.0.1:8443:443 -v "${PWD}\nginx-edge\nginx.conf:/etc/nginx/nginx.conf:ro" -v "${PWD}\nginx-edge\certs:/etc/nginx/certs:ro" nginx:1.28-alpine
+docker run -d `
+  --name juice-shop-nginx-edge `
+  --network kind `
+  -p 127.0.0.1:80:80 `
+  -p 127.0.0.1:443:443 `
+  -v "${PWD}\nginx\edge\nginx.conf:/etc/nginx/nginx.conf:ro" `
+  -v "${PWD}\nginx\edge\certs:/etc/nginx/certs:ro" `
+  nginx:1.28-alpine
 ```
 
-### 5. Validar o ambiente
+Valide a configuração e confira o estado do contêiner:
 
 ```powershell
-docker exec juice-shop-nginx-edge-prova nginx -t
-kubectl -n juiceshop get deployment,service,pods -o wide
-curl.exe -sS -o NUL -w "HTTP=%{http_code}`n" -H "Host: juiceshop.local" http://127.0.0.1:8080/
-curl.exe -k -sS -o NUL -w "HTTPS=%{http_code}`n" --resolve juiceshop.local:8443:127.0.0.1 https://juiceshop.local:8443/
-```
-
-Resultado esperado: Nginx válido, duas réplicas prontas, HTTP `301` e HTTPS `200`.
-
-### Segurança
-
-- As portas são publicadas somente em `127.0.0.1`.
-- O certificado é autoassinado e destinado ao laboratório.
-- Não exponha o Juice Shop vulnerável à internet.
-- Não versione a chave privada nem arquivos temporários da prova.
-- A prova isolada usa os nomes `juiceshop-prova` e `juice-shop-nginx-edge-prova`, evitando conflitos com o ambiente padrão.
-
-
-## Implantação e validação
-
-### 1. Verificar ferramentas
-
-```powershell
-docker --version
-docker info
-kind version
-kubectl version --client
-git --version
-```
-
-### 2. Verificar o cluster Kubernetes
-
-```powershell
-kubectl get nodes -o wide
-kubectl get namespaces
-kubectl -n juiceshop get deployment,service,pods -o wide
-```
-
-O resultado validado do Deployment foi de duas réplicas disponíveis. Os Pods devem estar em estado `Running` e prontos antes de testar a aplicação.
-
-### 3. Verificar o Nginx Edge
-
-```powershell
-docker ps --filter "name=juice-shop-nginx-edge"
 docker exec juice-shop-nginx-edge nginx -t
+docker ps --filter "name=juice-shop-nginx-edge"
 ```
 
-### 4. Testar HTTP e HTTPS
+O primeiro comando deve apresentar `syntax is ok` e `test is successful`.
 
-O HTTP deve redirecionar para HTTPS. O teste abaixo usa `-k` porque o certificado é autoassinado; isso serve para validar o laboratório, não para estabelecer confiança no certificado.
+### 8.7. Validar HTTP e HTTPS
 
 ```powershell
 curl.exe -sS -o NUL -w "HTTP=%{http_code}`n" http://juiceshop.local/
@@ -211,138 +246,176 @@ curl.exe -k -sS -o NUL -w "HTTPS=%{http_code}`n" https://juiceshop.local/
 curl.exe -k -sS -D - -o NUL https://juiceshop.local/
 ```
 
-Resultados observados: HTTP redirecionado com status `301`, HTTPS respondeu com `200`, e os cabeçalhos de segurança configurados foram apresentados na resposta.
+Resultados esperados:
 
-### 5. Verificar limite de requisições
+- HTTP: `301`, redirecionando para HTTPS.
+- HTTPS: `200`, com a aplicação respondendo.
+- O certificado autoassinado pode gerar aviso de confiança no navegador. O parâmetro `-k` é utilizado apenas nos testes locais para ignorar essa validação.
 
-O Nginx está configurado com limite de 5 requisições por segundo, tolerância (`burst`) de 10 e resposta `429` para excesso de requisições. Em um teste de 40 solicitações, foram observadas 24 respostas `200` e 16 respostas `429`. Esse resultado é específico daquela execução.
-
-### 6. Verificar a exposição local
-
-As portas 80 e 443 do Nginx são vinculadas a `127.0.0.1`, e o NodePort 30080 não deve estar diretamente publicado no loopback do Windows. A validação anterior de `127.0.0.1:30080` retornou `False`.
+### 8.8. Executar a validação automatizada
 
 ```powershell
-docker ps
-Test-NetConnection 127.0.0.1 -Port 30080 -InformationLevel Quiet
+.\scripts\validar-juice-shop.ps1
 ```
 
-## Certificado TLS
+O script verifica cluster, réplicas, contêiner Nginx, sintaxe, upstream, portas publicadas, redirecionamento, HTTPS e cabeçalhos de segurança.
 
-O certificado `nginx-edge/certs/juiceshop.local.crt` é autoassinado e possui SAN para `juiceshop.local` e `127.0.0.1`. Clientes que não confiam nele podem apresentar erro de validação. Não use `-k` como solução permanente para serviços reais.
+O resultado registrado na execução documentada foi de 12 testes aprovados e nenhum reprovado. Consulte `evidencias/E10-validacao-automatica.txt`.
 
-A chave privada `nginx-edge/certs/juiceshop.local.key` é confidencial e deve permanecer fora do Git. O arquivo `.gitignore` contém regras para ignorar arquivos `.key` e `.pem` nesse diretório.
+## 9. Segurança e limites
 
-## Recuperação após recriar o cluster
+- O Juice Shop é intencionalmente vulnerável.
+- As portas do Nginx devem ser publicadas somente em `127.0.0.1`.
+- O NodePort 30080 não deve ser publicado diretamente no Windows.
+- A chave privada TLS não deve ser versionada.
+- O certificado autoassinado é destinado ao laboratório.
+- Os cabeçalhos de segurança e o rate limit são proteções complementares; não tornam a aplicação segura para produção.
+- Não utilizar dados reais, credenciais pessoais ou senhas reutilizadas.
 
-O endereço do nó kind usado no `proxy_pass` do Nginx pode mudar se o cluster for recriado. Consulte o endereço atual e atualize `nginx-edge/nginx.conf` antes de recarregar o Nginx.
+A configuração de rate limit registrada utiliza 5 requisições por segundo, `burst` de 10 e resposta HTTP 429 quando o limite é excedido.
 
-```powershell
-kubectl get nodes -o wide
-docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" juiceshop-local-control-plane
-docker exec juice-shop-nginx-edge nginx -t
-docker exec juice-shop-nginx-edge nginx -s reload
-```
+Em um teste documentado de 40 solicitações, foram observadas 24 respostas HTTP 200 e 16 respostas HTTP 429. Esse resultado corresponde àquela execução específica.
 
-Confirme que o endereço usado no `proxy_pass` corresponde ao ambiente atual antes de executar o reload.
+### Exposição externa
 
-## Segurança e limites do laboratório
+Na Fase 1, o acesso externo foi configurado para a demonstração autorizada. Após a demonstração, foram removidos o encaminhamento de portas do roteador, a regra `portproxy` do Windows e regras específicas do Firewall relacionadas à porta 3000.
 
-- O Juice Shop é intencionalmente vulnerável e deve ser usado apenas em ambiente autorizado.
-- A configuração final documentada é local: o Nginx publica portas somente em `127.0.0.1`.
-- O acesso externo foi desativado após a demonstração: encaminhamento de portas do roteador, regra `portproxy` do Windows e regras específicas de firewall para a porta 3000 foram removidos.
-- O laboratório permaneceu disponível localmente para validação e gravação da demonstração.
-- Não usar dados reais, credenciais pessoais ou senhas reutilizadas.
-- O limite de requisições e os cabeçalhos HTTP são medidas complementares; não tornam o Juice Shop seguro para produção.
-- O certificado autoassinado é apropriado apenas para o laboratório e não equivale a um certificado emitido por uma autoridade confiável.
+A Fase 2 foi mantida sem exposição externa. A validação local não substitui uma verificação independente das configurações do roteador.
 
-## Evidências e documentação complementar
+## 10. Reprodução em clone limpo
 
-As capturas de tela das Etapas 2 a 6 estão em `docs/evidencias/`, organizadas por etapa. A pasta contém 108 imagens, distribuídas entre E2 (9), E3 (7), E4 (17), E5 (22) e E6 (53).
+Em 29/10/2026, foram documentadas duas reproduções em clones separados, com objetivos e configurações distintos.
 
-A evidência específica da Etapa 1 ainda deve ser localizada ou produzida, se for exigida na entrega. Não afirmar que existe uma captura que não foi localizada.
+### E9 — Reprodução da arquitetura padrão
 
-Documentos principais:
+A reprodução E9 utilizou a arquitetura padrão do projeto:
 
-- `README.md`: guia geral do projeto.
-- `ARQUITETURA-ETAPA6.md`: decisões, arquitetura, segurança, validações e limitações da Etapa 6.
-- `docs/evidencias/`: capturas de tela de execução.
+- Clone Git concluído.
+- Namespace, Deployment e Service criados.
+- Duas réplicas do Juice Shop prontas.
+- Nginx conectado à rede Docker `kind`.
+- Sintaxe do Nginx validada.
+- HTTP retornou 301.
+- HTTPS retornou 200.
+- Portas publicadas somente em `127.0.0.1:80` e `127.0.0.1:443`.
+- Upstream resolvido pelo nome `juiceshop-local-control-plane`.
 
-## Dificuldades e decisões
+Durante o teste foram corrigidos problemas de conectividade entre o Nginx e a rede `kind`, além de uma incompatibilidade entre o certificado e a chave privada.
 
-- A implantação inicial foi organizada com Docker e Docker Compose antes da evolução para Kubernetes com kind.
-- O Nginx Edge foi adotado como ponto único de entrada HTTP/HTTPS local.
-- O certificado autoassinado exigiu distinguir falha de confiança do certificado de falha de conectividade da aplicação.
-- O endereço do nó kind pode mudar após recriação do cluster, exigindo revisão do upstream do Nginx.
-- O limite de requisições foi validado com respostas HTTP `429` em teste controlado.
-- O acesso externo foi desativado depois da demonstração para reduzir exposição desnecessária.
+Registro: `evidencias/E9-reproducao-clone.md`.
 
-## Melhorias futuras
+### E11 — Prova isolada de reprodução a partir do README
 
-- Automatizar a descoberta do endereço do nó kind e a atualização do upstream.
-- Automatizar os testes HTTP/HTTPS e a validação dos cabeçalhos.
-- Produzir ou localizar a evidência pendente da Etapa 1.
-- Revisar os arquivos de backup e manter apenas os artefatos necessários para a entrega.
-- Demonstração em vídeo gravada e validada: docs/demonstracao/demonstracao-juice-shop.mp4.
+A E11 utilizou um cluster de teste separado, denominado `juiceshop-prova`, para preservar a configuração padrão do projeto.
 
-## Encerramento e desmontagem
+Características específicas dessa prova:
 
-**Estado: teardown executado em 29/10/2026.**
+- Cluster kind: `juiceshop-prova`.
+- Upstream do Nginx: `juiceshop-prova-control-plane:30080`.
+- Portas publicadas no host: `127.0.0.1:8080` e `127.0.0.1:8443`.
+- Portas internas do Nginx: 80 e 443.
+- HTTP retornou 301.
+- HTTPS retornou 200.
+- Duas réplicas do Juice Shop disponíveis.
+- Configuração do Nginx validada com `nginx -t`.
 
-Após a demonstração, o ambiente local foi desmontado. Foram removidos o contêiner Nginx Edge, o cluster Kind, os recursos do Docker Compose e sua rede. A entrada `juiceshop.local` também foi removida do arquivo `hosts`, e o cache DNS foi atualizado.
+A configuração específica da prova está em `prova-local/` e é ignorada pelo Git. Ela não deve substituir `kind-config.yaml` nem `nginx/edge/nginx.conf`.
 
-Comandos executados:
+Registro: `evidencias/E11-prova-clone-readme.md`.
+
+As reproduções E9 e E11 foram realizadas pelo responsável pelo projeto. Não representam uma reprodução independente por terceiro.
+
+## 11. Dificuldades e decisões
+
+- **NodePort:** o acesso direto pelo loopback do Windows não estava disponível. O Nginx foi conectado à rede Docker `kind` para alcançar o NodePort.
+- **Upstream:** a configuração definitiva utiliza o nome DNS `juiceshop-local-control-plane`, evitando a dependência de um IP fixo.
+- **Certificado TLS:** o certificado autoassinado gera aviso de confiança nos clientes que não o reconhecem.
+- **Logs:** foi necessário localizar os arquivos internos da aplicação e correlacioná-los com os registros do Nginx.
+- **Rate limit:** foram realizados testes controlados para observar as respostas HTTP 429.
+- **Exposição externa:** o acesso foi desativado após a demonstração para reduzir a exposição desnecessária.
+
+## 12. O que faria diferente
+
+Automatizaria a criação do cluster, a conexão do Nginx à rede Docker, a geração do certificado local e as verificações de disponibilidade do upstream.
+
+Um Ingress Controller poderia ser avaliado em um ambiente com múltiplas aplicações ou necessidade de roteamento mais declarativo. Ele não foi necessário para o escopo deste laboratório.
+
+## 13. Evidências e documentação complementar
+
+As evidências visuais das Etapas 2 a 6 estão em `evidencias/`. O inventário atual contém 108 imagens:
+
+| Etapa | Imagens |
+|---|---:|
+| Etapa 2 | 9 |
+| Etapa 3 | 7 |
+| Etapa 4 | 17 |
+| Etapa 5 | 22 |
+| Etapa 6 | 53 |
+| **Total** | **108** |
+
+A evidência específica da Etapa 1 ainda deve ser localizada ou produzida, caso seja exigida na entrega. Não afirmar que existe uma captura que não foi localizada.
+
+### Documentação individual das etapas
+
+Os registros individuais de execução estão em `docs/etapas/`:
+
+- `docs/etapas/etapa-1-ambiente-docker.md`
+- `docs/etapas/etapa-2-juice-shop-docker-compose.md`
+- `docs/etapas/etapa-3-nginx-proxy-reverso.md`
+- `docs/etapas/etapa-4-cluster-kubernetes-kind.md`
+- `docs/etapas/etapa-5-implantacao-kubernetes.md`
+- `docs/etapas/etapa-6-nginx-edge-https.md`
+
+### Outros registros
+
+- `ARQUITETURA-ETAPA6.md`: arquitetura, decisões, segurança, validações e limitações da Etapa 6.
+- `evidencias/E7-estado-antes-teardown.txt`: estado do ambiente antes da desmontagem.
+- `evidencias/E7-teardown-final.txt`: registro do teardown.
+- `evidencias/E8-gitleaks-atual.txt`: registro mais recente da varredura Gitleaks, incluindo a análise do histórico Git e dos arquivos destinados à publicação.
+- `evidencias/E8-gitleaks.txt`: registro anterior da varredura Gitleaks.
+- `evidencias/E8-gitleaks-resultado.png`: captura do resultado da varredura.
+- `evidencias/E9-reproducao-clone.md`: reprodução da arquitetura padrão em clone separado.
+- `evidencias/E10-validacao-automatica.txt`: resultado da validação automatizada.
+- `evidencias/E11-prova-clone-readme.md`: relatório da reprodução isolada em clone separado.
+- `evidencias/E11-prova-clone-readme.png`: captura da prova de reprodução.
+- `docs/demonstracao/demonstracao-juice-shop.mp4`: vídeo de demonstração, versionado com Git LFS.
+
+## 14. Teardown — desmontagem do ambiente
+
+O teardown do ambiente original foi executado em 29/10/2026.
+
+Comandos registrados:
 
 ```powershell
 docker rm -f juice-shop-nginx-edge
 kind delete cluster --name juiceshop-local
-docker compose down -v
+docker compose -f .\docker\docker-compose.yml down -v
 ```
 
-A validação local posterior confirmou que não havia cluster Kind, containers do projeto, processos escutando nas portas 80, 443, 3000 e 30080, nem entrada `juiceshop.local` no arquivo `hosts`.
+A entrada `juiceshop.local` foi removida do arquivo `hosts` e o cache DNS foi atualizado.
 
-A exposição externa foi desativada após a demonstração. A validação local não substitui uma verificação independente das configurações do roteador.
+O registro posterior informou:
 
-## Estado da entrega
+- Nenhum cluster kind encontrado.
+- Nenhum contêiner do projeto em execução.
+- Nenhum recurso do Docker Compose listado.
+- Nenhum processo escutando nas portas 80, 443, 3000 e 30080.
+- Nenhuma entrada `juiceshop.local` no arquivo `hosts`.
+- Exposição externa desativada após a demonstração.
+
+Consulte `evidencias/E7-teardown-final.txt`. A verificação local não substitui a conferência independente do roteador.
+
+## 15. Estado da entrega e pendências
 
 - **Etapas 1 a 6:** desenvolvidas e documentadas.
-- **Etapa 7:** documentação revisada, vídeo de demonstração gravado e validações locais realizadas.
-- **Repositório:** publicado no GitHub, na branch `master`. A revisão final e a publicação das evidências do teardown estão em andamento.
-- **Demonstração:** `docs/demonstracao/demonstracao-juice-shop.mp4`, versionado via Git LFS.
-- **Evidências:** capturas das Etapas 2 a 6 e registros finais disponíveis em `docs/evidencias/`. A evidência específica da Etapa 1 deve ser confirmada caso seja exigida.
-- **Teardown:** concluído. Cluster Kind, containers do projeto, recursos do Docker Compose e rede foram removidos. A entrada `juiceshop.local` foi removida do arquivo `hosts`.
-- **Validação local após o teardown:** nenhum cluster Kind encontrado, nenhum container do projeto listado, nenhuma das portas 80, 443, 3000 e 30080 em escuta e nenhuma entrada `juiceshop.local` no arquivo `hosts`.
-- **Segurança:** o acesso externo foi desativado após a demonstração. A validação local não substitui uma verificação independente do roteador.
-- **Reprodução por terceiros:** ainda não confirmada. Não afirmar que outra pessoa reproduziu o procedimento até que isso ocorra.
-- **Revisão do histórico Git e das imagens:** conferir antes da publicação final para evitar exposição acidental de dados sensíveis.
+- **Etapa 7:** documentação e evidências em revisão e consolidação.
+- **Etapa 8:** publicação final no GitHub ainda pendente de revisão e sincronização dos commits locais.
+- **Teardown:** executado e registrado.
+- **Validação automatizada:** resultado registrado em E10.
+- **Gitleaks:** varredura local do histórico Git sem segredos detectados, conforme registro E8. Reexecutar antes da publicação final.
+- **Clone limpo:** reproduções E9 e E11 realizadas pelo responsável pelo projeto; não houve confirmação de reprodução independente por terceiro.
+- **Etapa 1:** confirmar se a evidência específica é exigida e se existe captura correspondente.
+- **Documentação por etapa:** seis documentos individuais criados em `docs/etapas/`; revisão de consistência com o README ainda pendente.
+- **Revisão de segurança:** revisar arquivos, capturas, histórico Git e referências antes da publicação final.
 
-## 9. Reprodução em clone limpo
-
-A reprodução foi validada em um clone separado do repositório.
-
-- Duas réplicas do Juice Shop ficaram prontas no Kubernetes `kind`.
-- O Nginx foi conectado à rede Docker `kind`.
-- O upstream usa o nome do nó, evitando um IP fixo:
-
-```nginx
-proxy_pass http://juiceshop-local-control-plane:30080;
-```
-
-- `nginx -t` passou.
-- HTTP retornou `301` e HTTPS retornou `200`.
-- As portas publicadas foram restritas a `127.0.0.1:80` e `127.0.0.1:443`.
-- Os problemas de rede Docker e de incompatibilidade entre certificado e chave foram corrigidos.
-
-Consulte `docs/evidencias/E9-reproducao-clone.md` para o registro do teste.
-
-## 10. Segurança e encerramento
-
-O Juice Shop é intencionalmente vulnerável e deve permanecer em laboratório autorizado. O acesso externo foi desativado após a demonstração. A chave privada local não deve ser versionada, e o NodePort `30080` não deve ser publicado diretamente no Windows.
-
-O encerramento do ambiente original está registrado nos arquivos E7. A varredura Gitleaks está registrada em E8. A reprodução E9 foi realizada em um clone de teste e não significa que o ambiente original tenha sido alterado.
-
-## 11. Pendências e melhorias
-
-- Confirmar a evidência da Etapa 1, caso seja exigida.
-- Automatizar a validação HTTP/HTTPS e dos cabeçalhos.
-- Automatizar a verificação do upstream após recriar o cluster.
-- Revisar os artefatos antes da publicação final.
+Não considerar a Etapa 8 concluída até que a revisão final seja aprovada e os commits locais sejam publicados no GitHub.

@@ -176,7 +176,7 @@ O laboratório deve permanecer local, com dados fictícios e sem credenciais rea
 
 ## 13. Evidências
 
-As capturas das Etapas 2 a 6 estão em `docs/evidencias/`. Entre as evidências relevantes estão:
+As capturas das Etapas 2 a 6 estão em `evidencias/`. Entre as evidências relevantes estão:
 
 - `E6-06-estrutura-nginx-edge.png`
 - `E6-07-certificado-autoassinado.png`
@@ -197,6 +197,6 @@ As capturas são registros do ambiente observado e não substituem a repetição
 
 Na validação registrada em 29/10/2026, às 14:38, o cluster `juiceshop-local` estava ativo, o Deployment tinha duas réplicas disponíveis e o Nginx Edge respondia localmente em HTTP/HTTPS, com redirecionamento, cabeçalhos e limitação de requisições.
 
-O teardown posterior foi registrado separadamente em `docs/evidencias/E7-teardown-final.txt`. Esse registro informa que o cluster e os contêineres do projeto não estavam mais ativos, que as portas verificadas não estavam em escuta e que a entrada local do hostname havia sido removida.
+O teardown posterior foi registrado separadamente em `evidencias/E7-teardown-final.txt`. Esse registro informa que o cluster e os contêineres do projeto não estavam mais ativos, que as portas verificadas não estavam em escuta e que a entrada local do hostname havia sido removida.
 
 Portanto, o estado descrito nesta seção é histórico e representa o ambiente antes da desmontagem, não o estado atual do laboratório.
