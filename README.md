@@ -262,7 +262,280 @@ O script verifica cluster, réplicas, contêiner Nginx, sintaxe, upstream, porta
 
 O resultado registrado na execução documentada foi de 12 testes aprovados e nenhum reprovado. Consulte `evidencias/E10-validacao-automatica.txt`.
 
-## 9. Segurança e limites
+## 9. Reconstrução do ambiente do zero
+
+Este procedimento permite reconstruir a arquitetura da Fase 2 em uma instalação limpa do Windows. Ele utiliza Docker Desktop, WSL 2, kind, Kubernetes e Nginx Edge.
+
+**Atenção:** execute este procedimento em um ambiente limpo e isolado. Ele utiliza os nomes de cluster `juiceshop-local` e contêiner `juice-shop-nginx-edge`. Não execute sobre um laboratório que já utilize esses recursos.
+
+### 1. Pré-requisitos
+
+- Windows 10 ou 11 de 64 bits atualizado.
+- Virtualização habilitada na BIOS/UEFI.
+- Permissão de administrador no Windows.
+- Windows Package Manager (`winget`).
+- Conexão com a internet.
+- Espaço em disco e memória suficientes para Docker Desktop, Kubernetes e duas réplicas da aplicação.
+
+Abra o PowerShell como administrador.
+
+Confira o gerenciador de pacotes:
+
+    winget --version
+
+Instale ou atualize o WSL:
+
+    wsl --install
+    wsl --update
+    wsl --set-default-version 2
+
+Se o Windows solicitar reinicialização, reinicie antes de continuar. Depois, abra novamente o PowerShell.
+
+### 2. Instalar as ferramentas
+
+Instale PowerShell 7, Git, Docker Desktop, kubectl e kind:
+
+    winget install --id Microsoft.PowerShell -e
+    winget install --id Git.Git -e
+    winget install --id Docker.DockerDesktop -e
+    winget install --id Kubernetes.kubectl -e
+    winget install --id Kubernetes.kind -e
+
+Feche e abra novamente o terminal para atualizar o PATH.
+
+Abra o Docker Desktop. Aguarde o mecanismo Docker iniciar e habilite o uso do mecanismo baseado em WSL 2 nas configurações do Docker Desktop.
+
+Confira as ferramentas:
+
+    pwsh --version
+    git --version
+    docker --version
+    kind version
+    kubectl version --client
+    wsl --status
+
+Confirme que o Docker está usando contêineres Linux:
+
+    docker info --format 'Sistema de contêineres: {{.OSType}}'
+
+O resultado esperado é `linux`. Se aparecer `windows`, corrija a configuração do Docker Desktop antes de continuar.
+
+Confirme também que o mecanismo está acessível:
+
+    docker info
+
+### 3. Obter o projeto
+
+Clone o repositório:
+
+    git clone https://github.com/Rodrigo-Ibanez/juiceshop-docker.git
+    Set-Location .\juiceshop-docker
+
+Confirme que está na raiz do projeto:
+
+    Get-Location
+    Get-ChildItem
+
+Os comandos seguintes devem ser executados a partir dessa pasta.
+
+### 4. Verificar se o ambiente está livre
+
+Antes de criar recursos, verifique se os nomes utilizados já existem:
+
+    kind get clusters
+    docker ps -a
+
+Se já existir um cluster chamado `juiceshop-local`, não prossiga com a criação. Se já existir um contêiner chamado `juice-shop-nginx-edge`, não prossiga com a criação do Nginx.
+
+Não remova recursos existentes sem identificar a qual etapa ou laboratório pertencem.
+
+### 5. Gerar o certificado HTTPS
+
+Crie um certificado autoassinado para o endereço local:
+
+    New-Item -ItemType Directory -Force .\nginx\edge\certs
+    $rsa = [System.Security.Cryptography.RSA]::Create(2048)
+    $request = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new('CN=juiceshop.local', $rsa, [System.Security.Cryptography.HashAlgorithmName]::SHA256, [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+    $san = [System.Security.Cryptography.X509Certificates.SubjectAlternativeNameBuilder]::new()
+    $san.AddDnsName('juiceshop.local')
+    $san.AddIpAddress([System.Net.IPAddress]::Parse('127.0.0.1'))
+    $request.CertificateExtensions.Add($san.Build())
+    $cert = $request.CreateSelfSigned([DateTimeOffset]::Now.AddMinutes(-5), [DateTimeOffset]::Now.AddDays(365))
+    [IO.File]::WriteAllText((Join-Path $PWD 'nginx/edge/certs/juiceshop.local.crt'), $cert.ExportCertificatePem())
+    [IO.File]::WriteAllText((Join-Path $PWD 'nginx/edge/certs/juiceshop.local.key'), $rsa.ExportPkcs8PrivateKeyPem())
+    $rsa.Dispose()
+
+Importe o certificado na autoridade raiz confiável do usuário atual:
+
+    Import-Certificate -FilePath .\nginx\edge\certs\juiceshop.local.crt -CertStoreLocation Cert:\CurrentUser\Root
+
+A chave privada `juiceshop.local.key` é gerada localmente. Ela não deve ser versionada, compartilhada ou enviada ao Git. O `.gitignore` do projeto já contém regra para ignorar essa chave.
+
+### 6. Configurar o endereço local
+
+Abra o Bloco de Notas como administrador:
+
+    notepad C:\Windows\System32\drivers\etc\hosts
+
+Adicione a seguinte linha, caso ainda não exista:
+
+    127.0.0.1 juiceshop.local
+
+Salve o arquivo e atualize o cache DNS:
+
+    ipconfig /flushdns
+
+Confira a resolução:
+
+    ping juiceshop.local
+
+O endereço deve resolver para `127.0.0.1`.
+
+### 7. Criar o cluster Kubernetes
+
+Confira novamente se o cluster de destino não existe:
+
+    kind get clusters
+
+Se `juiceshop-local` já estiver listado, pare e identifique o ambiente antes de continuar.
+
+Crie o cluster:
+
+    kind create cluster --config .\kind-config.yaml
+
+Selecione o contexto:
+
+    kubectl config use-context kind-juiceshop-local
+
+Valide o nó:
+
+    kubectl get nodes -o wide
+
+O arquivo `kind-config.yaml` define um cluster chamado `juiceshop-local` com um nó `control-plane`.
+
+### 8. Baixar e carregar a imagem
+
+Baixe a imagem utilizada pelo Deployment:
+
+    docker pull bkimminich/juice-shop:v20.3.0
+
+Carregue a imagem no cluster:
+
+    kind load docker-image bkimminich/juice-shop:v20.3.0 --name juiceshop-local
+
+### 9. Implantar o Juice Shop
+
+Crie o namespace:
+
+    kubectl apply -f .\k8s\namespace.yaml
+
+Aplique o Deployment e o Service específicos da Fase 2:
+
+    kubectl apply -f .\k8s\fase2\deployment.yaml
+    kubectl apply -f .\k8s\fase2\service.yaml
+
+Aguarde as réplicas ficarem disponíveis:
+
+    kubectl -n juiceshop rollout status deployment/juice-shop --timeout=180s
+
+Confira os recursos:
+
+    kubectl -n juiceshop get deployment
+    kubectl -n juiceshop get pods -o wide
+    kubectl -n juiceshop get service
+
+O Deployment deve apresentar duas réplicas disponíveis. Os Pods devem estar `Running` e prontos.
+
+O Service utiliza NodePort `30080` dentro do nó do kind. Essa porta não deve ser publicada diretamente no Windows.
+
+### 10. Iniciar o Nginx Edge
+
+A configuração utilizada nesta etapa é `nginx/edge/nginx-fase2.conf`.
+
+Ela encaminha as requisições para `juiceshop-local-control-plane:30080` pela rede Docker `kind`.
+
+Confirme que o contêiner ainda não existe:
+
+    docker ps -a --filter "name=^/juice-shop-nginx-edge$"
+
+Se não houver conflito, execute na raiz do repositório:
+
+    $repo = (Resolve-Path .).Path.Replace('\', '/')
+    docker run -d --name juice-shop-nginx-edge --network kind -p 127.0.0.1:80:80 -p 127.0.0.1:443:443 --mount "type=bind,source=$repo/nginx/edge/nginx-fase2.conf,target=/etc/nginx/nginx.conf,readonly" --mount "type=bind,source=$repo/nginx/edge/certs,target=/etc/nginx/certs,readonly" nginx:1.28-alpine
+
+As portas HTTP e HTTPS são publicadas exclusivamente em `127.0.0.1`. Não publique o NodePort diretamente e não configure encaminhamento de portas no roteador.
+
+### 11. Validar a implantação
+
+Valide a configuração do Nginx:
+
+    docker exec juice-shop-nginx-edge nginx -t
+
+Confira o contêiner e as portas publicadas:
+
+    docker ps
+
+Confira os recursos Kubernetes:
+
+    kubectl -n juiceshop get deployment,pods,service
+
+Teste o redirecionamento HTTP:
+
+    curl.exe -I http://juiceshop.local/
+
+O resultado esperado é HTTP `301`, redirecionando para HTTPS.
+
+Teste HTTPS:
+
+    curl.exe -I https://juiceshop.local/
+
+O resultado esperado é HTTP `200`. O certificado deve estar confiável no perfil atual do Windows.
+
+Se o teste de HTTPS falhar por confiança do certificado, confira a importação no repositório `Cert:\CurrentUser\Root`. Como diagnóstico temporário, é possível testar a conexão com `curl.exe -k -I https://juiceshop.local/`; essa opção ignora a validação do certificado e não deve ser tratada como correção permanente.
+
+Confira também o limite de exposição:
+
+    Test-NetConnection 127.0.0.1 -Port 80
+    Test-NetConnection 127.0.0.1 -Port 443
+    Test-NetConnection 127.0.0.1 -Port 30080
+
+As portas 80 e 443 devem aceitar conexões locais. A porta 30080 não deve estar publicada diretamente no loopback do Windows.
+
+### 12. Verificações de segurança
+
+- Confirmar que as portas 80 e 443 estão vinculadas somente a `127.0.0.1`.
+- Confirmar que o NodePort `30080` não está publicado diretamente no Windows.
+- Não configurar encaminhamento de portas no roteador.
+- Não utilizar dados reais ou credenciais pessoais.
+- Não versionar a chave privada TLS.
+- Não utilizar o Juice Shop em produção.
+- Manter o laboratório restrito a ambiente local e autorizado.
+
+### 13. Recuperação e desmontagem
+
+Se o cluster for recriado, confira o nome e o endereço do nó:
+
+    kind get clusters
+    docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" juiceshop-local-control-plane
+
+A configuração Nginx desta etapa utiliza o nome DNS do contêiner do nó kind. Não substitua esse destino por um IP sem necessidade.
+
+Para desmontar esta implantação, confirme primeiro que está no ambiente isolado da Fase 2 e que os recursos não pertencem à Fase 3.
+
+Remova somente os recursos desta implantação:
+
+    docker rm -f juice-shop-nginx-edge
+    kind delete cluster --name juiceshop-local
+
+A remoção do cluster exclui os recursos Kubernetes nele existentes. Não execute esses comandos em um ambiente compartilhado ou enquanto houver atividades de outra etapa.
+
+Se desejar remover a entrada local, edite como administrador o arquivo `C:\Windows\System32\drivers\etc\hosts`, remova somente a linha `127.0.0.1 juiceshop.local` e execute:
+
+    ipconfig /flushdns
+
+A remoção do certificado confiável do usuário é opcional. Faça isso somente identificando o certificado correto pelo thumbprint antes de removê-lo.
+
+## 10. Segurança e limites
 
 - O Juice Shop é intencionalmente vulnerável.
 - As portas do Nginx devem ser publicadas somente em `127.0.0.1`.
@@ -282,7 +555,7 @@ Na Fase 1, o acesso externo foi configurado para a demonstração autorizada. Ap
 
 A Fase 2 foi mantida sem exposição externa. A validação local não substitui uma verificação independente das configurações do roteador.
 
-## 10. Reprodução em clone limpo
+## 11. Reprodução em clone limpo
 
 Em 29/10/2026, foram documentadas duas reproduções em clones separados, com objetivos e configurações distintos.
 
@@ -325,7 +598,7 @@ Registro: `evidencias/E11-prova-clone-readme.md`.
 
 As reproduções E9 e E11 foram realizadas pelo responsável pelo projeto. Não representam uma reprodução independente por terceiro.
 
-## 11. Dificuldades e decisões
+## 12. Dificuldades e decisões
 
 - **NodePort:** o acesso direto pelo loopback do Windows não estava disponível. O Nginx foi conectado à rede Docker `kind` para alcançar o NodePort.
 - **Upstream:** a configuração definitiva utiliza o nome DNS `juiceshop-local-control-plane`, evitando a dependência de um IP fixo.
@@ -334,13 +607,13 @@ As reproduções E9 e E11 foram realizadas pelo responsável pelo projeto. Não 
 - **Rate limit:** foram realizados testes controlados para observar as respostas HTTP 429.
 - **Exposição externa:** o acesso foi desativado após a demonstração para reduzir a exposição desnecessária.
 
-## 12. O que faria diferente
+## 13. O que faria diferente
 
 Automatizaria a criação do cluster, a conexão do Nginx à rede Docker, a geração do certificado local e as verificações de disponibilidade do upstream.
 
 Um Ingress Controller poderia ser avaliado em um ambiente com múltiplas aplicações ou necessidade de roteamento mais declarativo. Ele não foi necessário para o escopo deste laboratório.
 
-## 13. Evidências e documentação complementar
+## 14. Evidências e documentação complementar
 
 As evidências visuais das Etapas 2 a 6 estão em `evidencias/`. O inventário atual contém 108 imagens:
 
@@ -380,7 +653,7 @@ Os registros individuais de execução estão em `docs/etapas/`:
 - `evidencias/E11-prova-clone-readme.png`: captura da prova de reprodução.
 - `docs/demonstracao/demonstracao-juice-shop.mp4`: vídeo de demonstração, versionado com Git LFS.
 
-## 14. Teardown — desmontagem do ambiente
+## 15. Teardown — desmontagem do ambiente
 
 O teardown do ambiente original foi executado em 29/10/2026.
 
@@ -405,7 +678,7 @@ O registro posterior informou:
 
 Consulte `evidencias/E7-teardown-final.txt`. A verificação local não substitui a conferência independente do roteador.
 
-## 15. Estado da entrega e pendências
+## 16. Estado da entrega e pendências
 
 - **Etapas 1 a 6:** desenvolvidas e documentadas.
 - **Etapa 7:** documentação e evidências em revisão e consolidação.
