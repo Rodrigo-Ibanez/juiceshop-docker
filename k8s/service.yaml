@@ -5,10 +5,11 @@ metadata:
   namespace: juiceshop
   labels:
     app: juice-shop
+
 spec:
-  # NodePort permite que o Nginx, na rede Docker kind,
-  # alcance a aplicação através do node do cluster.
-  # A porta não será publicada diretamente no Windows.
+  # O tráfego chega ao Nginx sidecar na porta 3001.
+  # O sidecar encaminha as requisições para o Juice Shop na porta 3000.
+  # O NodePort não será publicado diretamente no Windows.
   type: NodePort
 
   selector:

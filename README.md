@@ -642,6 +642,7 @@ Os registros individuais de execução estão em `docs/etapas/`:
 ### Outros registros
 
 - `ARQUITETURA-ETAPA6.md`: arquitetura, decisões, segurança, validações e limitações da Etapa 6.
+- `docs/F3-E0-burp-suite.md`: configuração do Burp Suite Community, confiança HTTPS, interceptação e evidências da atividade.
 - `evidencias/E7-estado-antes-teardown.txt`: estado do ambiente antes da desmontagem.
 - `evidencias/E7-teardown-final.txt`: registro do teardown.
 - `evidencias/E8-gitleaks-atual.txt`: registro mais recente da varredura Gitleaks, incluindo a análise do histórico Git e dos arquivos destinados à publicação.
