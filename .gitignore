@@ -6,3 +6,6 @@ prova-local/
 # Backups locais de documentação
 *.bak.md
 README-final-candidato.md
+
+# Certificados e chaves privadas do ambiente local
+nginx-edge/certs/
