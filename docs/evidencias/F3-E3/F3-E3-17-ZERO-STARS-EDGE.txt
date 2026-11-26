@@ -1,0 +1,6 @@
+
+2026-11-25T22:40:13+00:00 client=172.20.0.1 method=POST uri="/api/Feedbacks/" status=201 upstream=172.20.0.3:30080 upstream_status=201 pentest_id="-"
+2026-11-25T22:58:15+00:00 client=172.20.0.1 method=POST uri="/api/Feedbacks/" status=201 upstream=[fc00:f853:ccd:e793::3]:30080, 172.20.0.3:30080 upstream_status=502, 201 pentest_id="-"
+2026/11/25 22:58:15 [error] 29#29: *993 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.1, server: juiceshop.local, request: "POST /api/Feedbacks/ HTTP/1.1", upstream: "http://[fc00:f853:ccd:e793::3]:30080/api/Feedbacks/", host: "juiceshop.local", referrer: "https://juiceshop.local/"
+2026/11/25 22:58:15 [warn] 29#29: *993 upstream server temporarily disabled while connecting to upstream, client: 172.20.0.1, server: juiceshop.local, request: "POST /api/Feedbacks/ HTTP/1.1", upstream: "http://[fc00:f853:ccd:e793::3]:30080/api/Feedbacks/", host: "juiceshop.local", referrer: "https://juiceshop.local/"
+

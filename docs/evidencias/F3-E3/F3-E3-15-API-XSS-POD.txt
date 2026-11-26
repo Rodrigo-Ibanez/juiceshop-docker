@@ -1,0 +1,3 @@
+
+2026-11-25T02:47:09+00:00 pod=juice-shop-77b6bd7f44-r9g4d client=10.244.0.1 method=GET uri="/api/Products/57" status=200 upstream=127.0.0.1:3000 upstream_status=200 pentest_id="F3E3-API-XSS-20261125-01"
+
